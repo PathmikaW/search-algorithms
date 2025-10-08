@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Play, Plus, Trash2, Download, Upload, Clock, ArrowRight, ArrowLeftRight, AlertCircle, Info, Train, PartyPopper, CloudRain } from 'lucide-react';
+import { Play, Plus, Trash2, Download, Upload, Clock, ArrowRight, ArrowLeftRight, AlertCircle, Info, Train, PartyPopper, CloudRain, ChevronDown, ChevronUp, Settings } from 'lucide-react';
 
 const SearchAlgorithmTool = () => {
   const [nodes, setNodes] = useState([
@@ -13,21 +13,20 @@ const SearchAlgorithmTool = () => {
     { id: 8, name: 'Maradana Station', x: 300, y: 500, isStart: false, isGoal: true, h: 0, deadline: 27 }
   ]);
 
-  // Base costs calculated so that Evening Peak (×2.0) matches document values
   const [edges, setEdges] = useState([
-    { from: 0, to: 2, baseCost: 3, isOneWay: false, direction: 'both' },      // 6 min at peak
-    { from: 0, to: 3, baseCost: 4, isOneWay: false, direction: 'both' },      // 8 min at peak
-    { from: 0, to: 6, baseCost: 6, isOneWay: false, direction: 'both' },      // 12 min at peak
-    { from: 0, to: 7, baseCost: 5, isOneWay: false, direction: 'both' },      // 10 min at peak
-    { from: 2, to: 3, baseCost: 2.5, isOneWay: false, direction: 'both' },    // 5 min at peak
-    { from: 2, to: 7, baseCost: 4, isOneWay: false, direction: 'both' },      // 8 min at peak
-    { from: 3, to: 4, baseCost: 2, isOneWay: false, direction: 'both' },      // 4 min at peak
-    { from: 3, to: 6, baseCost: 3.5, isOneWay: false, direction: 'both' },    // 7 min at peak
-    { from: 4, to: 5, baseCost: 6, isOneWay: false, direction: 'both' },      // 12 min at peak
-    { from: 6, to: 5, baseCost: 4, isOneWay: false, direction: 'both' },      // 8 min at peak
-    { from: 7, to: 6, baseCost: 6, isOneWay: false, direction: 'both' },      // 12 min at peak
-    { from: 7, to: 8, baseCost: 1.5, isOneWay: false, direction: 'both' },    // 3 min at peak
-    { from: 5, to: 8, baseCost: 2, isOneWay: false, direction: 'both' }       // 4 min at peak
+    { from: 0, to: 2, baseCost: 3, isOneWay: false, direction: 'both' },
+    { from: 0, to: 3, baseCost: 4, isOneWay: false, direction: 'both' },
+    { from: 0, to: 6, baseCost: 6, isOneWay: false, direction: 'both' },
+    { from: 0, to: 7, baseCost: 5, isOneWay: false, direction: 'both' },
+    { from: 2, to: 3, baseCost: 2.5, isOneWay: false, direction: 'both' },
+    { from: 2, to: 7, baseCost: 4, isOneWay: false, direction: 'both' },
+    { from: 3, to: 4, baseCost: 2, isOneWay: false, direction: 'both' },
+    { from: 3, to: 6, baseCost: 3.5, isOneWay: false, direction: 'both' },
+    { from: 4, to: 5, baseCost: 6, isOneWay: false, direction: 'both' },
+    { from: 6, to: 5, baseCost: 4, isOneWay: false, direction: 'both' },
+    { from: 7, to: 6, baseCost: 6, isOneWay: false, direction: 'both' },
+    { from: 7, to: 8, baseCost: 1.5, isOneWay: false, direction: 'both' },
+    { from: 5, to: 8, baseCost: 2, isOneWay: false, direction: 'both' }
   ]);
 
   const [selectedAlgorithm, setSelectedAlgorithm] = useState('astar');
@@ -35,10 +34,11 @@ const SearchAlgorithmTool = () => {
   const [showAddNode, setShowAddNode] = useState(false);
   const [showAddEdge, setShowAddEdge] = useState(false);
   const [showInfoModal, setShowInfoModal] = useState(false);
+  const [showNodeManager, setShowNodeManager] = useState(false);
+  const [showEdgeManager, setShowEdgeManager] = useState(false);
   const [newNode, setNewNode] = useState({ name: '', h: 0, isGoal: false, deadline: null });
   const [newEdge, setNewEdge] = useState({ from: '', to: '', baseCost: 0, isOneWay: false });
 
-  // Algorithm complexity information
   const algorithmProperties = {
     'BFS': {
       timeComplexity: 'O(V + E)',
@@ -114,6 +114,39 @@ const SearchAlgorithmTool = () => {
     { from: 4, to: 5, restrictedDirection: 'reverse', peakCost: 15 },
     { from: 5, to: 6, restrictedDirection: 'reverse', peakCost: 12 },
   ];
+
+  const findNonOverlappingPosition = () => {
+    const svgWidth = 600;
+    const svgHeight = 600;
+    const minDistance = 80;
+    const margin = 60;
+    
+    for (let attempt = 0; attempt < 100; attempt++) {
+      const x = margin + Math.random() * (svgWidth - 2 * margin);
+      const y = margin + Math.random() * (svgHeight - 2 * margin);
+      
+      const tooClose = nodes.some(node => {
+        const distance = Math.sqrt(Math.pow(node.x - x, 2) + Math.pow(node.y - y, 2));
+        return distance < minDistance;
+      });
+      
+      if (!tooClose) {
+        return { x: Math.round(x), y: Math.round(y) };
+      }
+    }
+    
+    const gridSize = Math.ceil(Math.sqrt(nodes.length + 1));
+    const cellWidth = (svgWidth - 2 * margin) / gridSize;
+    const cellHeight = (svgHeight - 2 * margin) / gridSize;
+    const index = nodes.length;
+    const row = Math.floor(index / gridSize);
+    const col = index % gridSize;
+    
+    return {
+      x: Math.round(margin + col * cellWidth + cellWidth / 2),
+      y: Math.round(margin + row * cellHeight + cellHeight / 2)
+    };
+  };
 
   const getEdgeCost = (from, to) => {
     const edge = edges.find(e => 
@@ -737,11 +770,13 @@ const SearchAlgorithmTool = () => {
   const addNode = () => {
     if (!newNode.name) return;
     const maxId = Math.max(...nodes.map(n => n.id), -1);
+    const position = findNonOverlappingPosition();
+    
     setNodes([...nodes, {
       id: maxId + 1,
       name: newNode.name,
-      x: 250,
-      y: 250,
+      x: position.x,
+      y: position.y,
       isStart: false,
       isGoal: newNode.isGoal,
       h: parseFloat(newNode.h) || 0,
@@ -840,7 +875,6 @@ const SearchAlgorithmTool = () => {
           </button>
         </div>
 
-        {/* Scenario Box */}
         <div className="bg-white rounded-lg shadow-lg p-4 mb-6 border-l-4 border-blue-600">
           <p className="text-gray-800">
             <strong>Scenario:</strong> Nimal finished a client meeting in <strong>Dehiwala</strong> and must catch the 
@@ -849,7 +883,6 @@ const SearchAlgorithmTool = () => {
           </p>
         </div>
 
-        {/* Traffic Configuration Panel */}
         <div className="bg-gradient-to-r from-orange-50 to-red-50 rounded-lg shadow-md p-6 mb-6 border-2 border-orange-300">
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-xl font-semibold text-gray-800 flex items-center gap-2">
@@ -919,7 +952,6 @@ const SearchAlgorithmTool = () => {
           )}
         </div>
 
-        {/* Control Panel */}
         <div className="bg-white rounded-lg shadow-md p-6 mb-6">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
@@ -991,9 +1023,16 @@ const SearchAlgorithmTool = () => {
           </div>
         </div>
 
-        {/* Graph Visualization - MOVED HERE */}
         <div className="bg-white rounded-lg shadow-md p-6 mb-6">
           <h2 className="text-xl font-semibold mb-4">📍 Graph Visualization</h2>
+          
+          <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded">
+            <p className="text-sm text-gray-700">
+              <strong>Legend:</strong> Numbers on edges = <span className="text-blue-700 font-semibold">Actual Travel Time</span> (minutes) | 
+              <span className="ml-2">h(n) = <span className="text-purple-700 font-semibold">Heuristic Value</span> (estimated time to nearest goal)</span>
+            </p>
+          </div>
+
           <div className="bg-gray-50 p-4 rounded-lg">
             <svg width="600" height="600" className="border border-gray-300 rounded bg-white mx-auto">
               {edges.map((edge, idx) => {
@@ -1087,16 +1126,14 @@ const SearchAlgorithmTool = () => {
                         ⏰{node.deadline}min
                       </text>
                     )}
-                    {!node.deadline && node.h !== undefined && (
-                      <text
-                        x={node.x}
-                        y={node.y + 60}
-                        className="text-xs text-gray-500"
-                        textAnchor="middle"
-                      >
-                        h={node.h}
-                      </text>
-                    )}
+                    <text
+                      x={node.x}
+                      y={node.deadline ? node.y + 75 : node.y + 60}
+                      className="text-xs text-purple-600 font-semibold"
+                      textAnchor="middle"
+                    >
+                      h={node.h}
+                    </text>
                   </g>
                 );
               })}
@@ -1125,12 +1162,164 @@ const SearchAlgorithmTool = () => {
               <span>One-Way Road</span>
             </div>
           </div>
+
+          {/* COLLAPSIBLE NODE & EDGE MANAGERS - Positioned right after visualization */}
+          <div className="mt-6 space-y-4">
+            {/* Node Manager Collapsible */}
+            <div className="border-2 border-gray-200 rounded-lg overflow-hidden">
+              <button
+                onClick={() => setShowNodeManager(!showNodeManager)}
+                className="w-full flex items-center justify-between p-4 bg-gradient-to-r from-purple-50 to-indigo-50 hover:from-purple-100 hover:to-indigo-100 transition-colors"
+              >
+                <div className="flex items-center gap-3">
+                  <Settings className="text-purple-600" size={20} />
+                  <h3 className="text-lg font-semibold text-gray-800">Node Manager</h3>
+                  <span className="text-sm text-gray-600 bg-white px-3 py-1 rounded-full">
+                    {nodes.length} nodes
+                  </span>
+                </div>
+                {showNodeManager ? <ChevronUp className="text-gray-600" size={20} /> : <ChevronDown className="text-gray-600" size={20} />}
+              </button>
+              
+              {showNodeManager && (
+                <div className="p-4 bg-gray-50">
+                  <div className="space-y-2 max-h-80 overflow-y-auto">
+                    {nodes.map(node => (
+                      <div key={node.id} className="flex items-center justify-between p-3 bg-white rounded hover:bg-gray-50 border border-gray-200">
+                        <div className="flex-1 grid grid-cols-6 gap-4">
+                          <span className="font-medium text-gray-700">ID: {node.id}</span>
+                          <input
+                            type="text"
+                            value={node.name}
+                            onChange={(e) => {
+                              const updated = nodes.map(n => n.id === node.id ? {...n, name: e.target.value} : n);
+                              setNodes(updated);
+                            }}
+                            className="px-2 py-1 border rounded text-sm"
+                          />
+                          <input
+                            type="number"
+                            step="0.1"
+                            value={node.h}
+                            onChange={(e) => {
+                              const updated = nodes.map(n => n.id === node.id ? {...n, h: parseFloat(e.target.value) || 0} : n);
+                              setNodes(updated);
+                            }}
+                            placeholder="h(n)"
+                            className="px-2 py-1 border rounded text-sm"
+                          />
+                          <input
+                            type="number"
+                            value={node.deadline || ''}
+                            onChange={(e) => {
+                              const updated = nodes.map(n => n.id === node.id ? {...n, deadline: e.target.value ? parseFloat(e.target.value) : null} : n);
+                              setNodes(updated);
+                            }}
+                            placeholder="Deadline"
+                            className="px-2 py-1 border rounded text-sm"
+                          />
+                          <label className="flex items-center gap-2 text-sm">
+                            <input
+                              type="checkbox"
+                              checked={node.isGoal}
+                              onChange={(e) => {
+                                const updated = nodes.map(n => n.id === node.id ? {...n, isGoal: e.target.checked} : n);
+                                setNodes(updated);
+                              }}
+                            />
+                            Goal
+                          </label>
+                        </div>
+                        <button
+                          onClick={() => deleteNode(node.id)}
+                          className="text-red-600 hover:text-red-800 ml-2"
+                        >
+                          <Trash2 size={18} />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Edge Manager Collapsible */}
+            <div className="border-2 border-gray-200 rounded-lg overflow-hidden">
+              <button
+                onClick={() => setShowEdgeManager(!showEdgeManager)}
+                className="w-full flex items-center justify-between p-4 bg-gradient-to-r from-blue-50 to-cyan-50 hover:from-blue-100 hover:to-cyan-100 transition-colors"
+              >
+                <div className="flex items-center gap-3">
+                  <ArrowLeftRight className="text-blue-600" size={20} />
+                  <h3 className="text-lg font-semibold text-gray-800">Edge Manager</h3>
+                  <span className="text-sm text-gray-600 bg-white px-3 py-1 rounded-full">
+                    {edges.length} edges
+                  </span>
+                </div>
+                {showEdgeManager ? <ChevronUp className="text-gray-600" size={20} /> : <ChevronDown className="text-gray-600" size={20} />}
+              </button>
+              
+              {showEdgeManager && (
+                <div className="p-4 bg-gray-50">
+                  <div className="space-y-2 max-h-80 overflow-y-auto">
+                    {edges.map((edge, idx) => {
+                      const actualCost = Math.round(edge.baseCost * timeSlots[timeSlot].multiplier * 10) / 10;
+                      const fromNode = nodes.find(n => n.id === edge.from);
+                      const toNode = nodes.find(n => n.id === edge.to);
+                      
+                      return (
+                        <div key={idx} className="flex items-center justify-between p-3 bg-white rounded hover:bg-gray-50 border border-gray-200">
+                          <div className="flex-1 grid grid-cols-5 gap-4 items-center">
+                            <span className="text-sm font-medium">{fromNode?.name || edge.from}</span>
+                            {edge.isOneWay && oneWayEnabled ? (
+                              <ArrowRight className="text-red-600 mx-auto" size={18} />
+                            ) : (
+                              <ArrowLeftRight className="text-gray-400 mx-auto" size={18} />
+                            )}
+                            <span className="text-sm font-medium">{toNode?.name || edge.to}</span>
+                            <div>
+                              <input
+                                type="number"
+                                step="0.1"
+                                value={edge.baseCost}
+                                onChange={(e) => {
+                                  const updated = edges.map((ed, i) => i === idx ? {...ed, baseCost: parseFloat(e.target.value) || 0} : ed);
+                                  setEdges(updated);
+                                }}
+                                className="px-2 py-1 border rounded w-20 text-sm"
+                              />
+                              <span className="text-xs text-gray-500 ml-1">→ {actualCost}m</span>
+                            </div>
+                            <label className="flex items-center gap-2 text-sm">
+                              <input
+                                type="checkbox"
+                                checked={edge.isOneWay}
+                                onChange={(e) => {
+                                  const updated = edges.map((ed, i) => i === idx ? {...ed, isOneWay: e.target.checked} : ed);
+                                  setEdges(updated);
+                                }}
+                              />
+                              One-way
+                            </label>
+                          </div>
+                          <button
+                            onClick={() => deleteEdge(idx)}
+                            className="text-red-600 hover:text-red-800 ml-2"
+                          >
+                            <Trash2 size={18} />
+                          </button>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
         </div>
 
-        {/* Results with Train Status */}
         {results && !results.compareAll && (
           <div className="space-y-6">
-            {/* Train Status Banner */}
             {results.deadlineStatus && (
               <div className={`rounded-lg shadow-xl p-8 text-center ${
                 results.deadlineStatus.status === 'success' 
@@ -1171,7 +1360,6 @@ const SearchAlgorithmTool = () => {
               </div>
             )}
 
-            {/* Algorithm Results */}
             <div className="bg-white rounded-lg shadow-md p-6">
               <div className="flex items-center justify-between mb-4">
                 <h2 className="text-xl font-semibold">Algorithm: {results.algorithm}</h2>
@@ -1192,7 +1380,7 @@ const SearchAlgorithmTool = () => {
               
               <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-6">
                 <div className={`p-4 rounded ${results.deadlineStatus?.status === 'success' ? 'bg-green-50' : 'bg-red-50'}`}>
-                  <p className="text-sm text-gray-600">Travel Time</p>
+                  <p className="text-sm text-gray-600">Actual Path Cost (g)</p>
                   <p className="text-xl font-bold">{results.cost === Infinity ? '∞' : results.cost} min</p>
                 </div>
                 <div className="p-4 bg-purple-50 rounded">
@@ -1238,7 +1426,6 @@ const SearchAlgorithmTool = () => {
                 </div>
               </div>
 
-              {/* Algorithm Properties */}
               {algorithmProperties[results.algorithm] && (
                 <div className="border-t-2 border-gray-200 pt-6">
                   <h3 className="text-lg font-semibold mb-4 text-gray-800">📚 Algorithm Properties & Complexity Analysis</h3>
@@ -1269,7 +1456,8 @@ const SearchAlgorithmTool = () => {
                       <strong>Note:</strong> {algorithmProperties[results.algorithm].description}
                     </p>
                     <p className="text-xs text-gray-600 mt-2">
-                      <em>Where: V = vertices, E = edges, b = branching factor, d = depth, m = maximum depth</em>
+                      <em>Where: <strong>g(n)</strong> = actual path cost from start to n, <strong>h(n)</strong> = heuristic estimate from n to goal, 
+                      V = vertices, E = edges, b = branching factor, d = depth, m = maximum depth</em>
                     </p>
                   </div>
                 </div>
@@ -1278,7 +1466,6 @@ const SearchAlgorithmTool = () => {
           </div>
         )}
 
-        {/* Comparison Table */}
         {results && results.compareAll && (
           <div className="space-y-6">
             <div className="bg-white rounded-lg shadow-md p-6 overflow-hidden">
@@ -1341,7 +1528,6 @@ const SearchAlgorithmTool = () => {
               </div>
             </div>
 
-            {/* Complexity Comparison Table */}
             <div className="bg-white rounded-lg shadow-md p-6 overflow-hidden">
               <h2 className="text-xl font-semibold mb-4">📊 Algorithm Complexity & Properties Comparison</h2>
               <div className="overflow-x-auto">
@@ -1389,12 +1575,11 @@ const SearchAlgorithmTool = () => {
               </div>
               <div className="mt-4 p-4 bg-gray-50 rounded border border-gray-200">
                 <p className="text-xs text-gray-600">
-                  <strong>Legend:</strong> V = vertices (nodes), E = edges, b = branching factor, d = depth of solution, m = maximum depth, C* = optimal cost, ε = minimum edge cost
+                  <strong>Legend:</strong> <strong>g(n)</strong> = actual path cost, <strong>h(n)</strong> = heuristic estimate, V = vertices (nodes), E = edges, b = branching factor, d = depth of solution, m = maximum depth, C* = optimal cost, ε = minimum edge cost
                 </p>
               </div>
             </div>
 
-            {/* Summary Statistics */}
             <div className="bg-white rounded-lg shadow-md p-6">
               <h2 className="text-xl font-semibold mb-4">📈 Performance Summary</h2>
               <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
@@ -1453,124 +1638,6 @@ const SearchAlgorithmTool = () => {
           </div>
         )}
 
-        {/* Node Manager */}
-        <div className="bg-white rounded-lg shadow-md p-6 mb-6">
-          <h2 className="text-xl font-semibold mb-4">Node Manager</h2>
-          <div className="space-y-2 max-h-80 overflow-y-auto">
-            {nodes.map(node => (
-              <div key={node.id} className="flex items-center justify-between p-3 bg-gray-50 rounded hover:bg-gray-100">
-                <div className="flex-1 grid grid-cols-6 gap-4">
-                  <span className="font-medium text-gray-700">ID: {node.id}</span>
-                  <input
-                    type="text"
-                    value={node.name}
-                    onChange={(e) => {
-                      const updated = nodes.map(n => n.id === node.id ? {...n, name: e.target.value} : n);
-                      setNodes(updated);
-                    }}
-                    className="px-2 py-1 border rounded text-sm"
-                  />
-                  <input
-                    type="number"
-                    step="0.1"
-                    value={node.h}
-                    onChange={(e) => {
-                      const updated = nodes.map(n => n.id === node.id ? {...n, h: parseFloat(e.target.value) || 0} : n);
-                      setNodes(updated);
-                    }}
-                    placeholder="h(n)"
-                    className="px-2 py-1 border rounded text-sm"
-                  />
-                  <input
-                    type="number"
-                    value={node.deadline || ''}
-                    onChange={(e) => {
-                      const updated = nodes.map(n => n.id === node.id ? {...n, deadline: e.target.value ? parseFloat(e.target.value) : null} : n);
-                      setNodes(updated);
-                    }}
-                    placeholder="Deadline"
-                    className="px-2 py-1 border rounded text-sm"
-                  />
-                  <label className="flex items-center gap-2 text-sm">
-                    <input
-                      type="checkbox"
-                      checked={node.isGoal}
-                      onChange={(e) => {
-                        const updated = nodes.map(n => n.id === node.id ? {...n, isGoal: e.target.checked} : n);
-                        setNodes(updated);
-                      }}
-                    />
-                    Goal
-                  </label>
-                </div>
-                <button
-                  onClick={() => deleteNode(node.id)}
-                  className="text-red-600 hover:text-red-800 ml-2"
-                >
-                  <Trash2 size={18} />
-                </button>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* Edge Manager */}
-        <div className="bg-white rounded-lg shadow-md p-6">
-          <h2 className="text-xl font-semibold mb-4">Edge Manager</h2>
-          <div className="space-y-2 max-h-80 overflow-y-auto">
-            {edges.map((edge, idx) => {
-              const actualCost = Math.round(edge.baseCost * timeSlots[timeSlot].multiplier * 10) / 10;
-              const fromNode = nodes.find(n => n.id === edge.from);
-              const toNode = nodes.find(n => n.id === edge.to);
-              
-              return (
-                <div key={idx} className="flex items-center justify-between p-3 bg-gray-50 rounded hover:bg-gray-100">
-                  <div className="flex-1 grid grid-cols-5 gap-4 items-center">
-                    <span className="text-sm font-medium">{fromNode?.name || edge.from}</span>
-                    {edge.isOneWay && oneWayEnabled ? (
-                      <ArrowRight className="text-red-600 mx-auto" size={18} />
-                    ) : (
-                      <ArrowLeftRight className="text-gray-400 mx-auto" size={18} />
-                    )}
-                    <span className="text-sm font-medium">{toNode?.name || edge.to}</span>
-                    <div>
-                      <input
-                        type="number"
-                        step="0.1"
-                        value={edge.baseCost}
-                        onChange={(e) => {
-                          const updated = edges.map((ed, i) => i === idx ? {...ed, baseCost: parseFloat(e.target.value) || 0} : ed);
-                          setEdges(updated);
-                        }}
-                        className="px-2 py-1 border rounded w-20 text-sm"
-                      />
-                      <span className="text-xs text-gray-500 ml-1">→ {actualCost}m</span>
-                    </div>
-                    <label className="flex items-center gap-2 text-sm">
-                      <input
-                        type="checkbox"
-                        checked={edge.isOneWay}
-                        onChange={(e) => {
-                          const updated = edges.map((ed, i) => i === idx ? {...ed, isOneWay: e.target.checked} : ed);
-                          setEdges(updated);
-                        }}
-                      />
-                      One-way
-                    </label>
-                  </div>
-                  <button
-                    onClick={() => deleteEdge(idx)}
-                    className="text-red-600 hover:text-red-800 ml-2"
-                  >
-                    <Trash2 size={18} />
-                  </button>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-
-        {/* Modals */}
         {showInfoModal && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
             <div className="bg-white rounded-lg p-6 max-w-3xl max-h-[90vh] overflow-y-auto">
@@ -1591,14 +1658,25 @@ const SearchAlgorithmTool = () => {
                   </p>
                 </div>
 
+                <div className="bg-purple-50 p-4 rounded">
+                  <h4 className="font-semibold text-lg mb-2 text-purple-700">📐 Understanding g(n) vs h(n)</h4>
+                  <ul className="list-disc ml-5 text-gray-700 space-y-2">
+                    <li><strong>g(n)</strong> = <span className="text-blue-700 font-semibold">Actual Path Cost</span> - The real travel time from start to node n</li>
+                    <li><strong>h(n)</strong> = <span className="text-purple-700 font-semibold">Heuristic Estimate</span> - Estimated time from node n to nearest goal (always ≤ actual)</li>
+                    <li><strong>f(n) = g(n) + h(n)</strong> - Total estimated cost (used by A*)</li>
+                  </ul>
+                  <p className="text-gray-700 mt-2 text-sm">
+                    <strong>Example:</strong> If g(n)=10 min (traveled so far) and h(n)=5 min (estimate to goal), then f(n)=15 min total.
+                  </p>
+                </div>
+
                 <div className="bg-green-50 p-4 rounded">
                   <h4 className="font-semibold text-lg mb-2 text-green-700">✅ Understanding Results</h4>
                   <ul className="list-disc ml-5 text-gray-700 space-y-1">
-                    <li><strong>🎉 Train Caught:</strong> Travel time ≤ deadline (Green banner with celebration)</li>
-                    <li><strong>😢 Train Missed:</strong> Travel time &gt; deadline (Red banner with sad message)</li>
+                    <li><strong>🎉 Train Caught:</strong> g(n) ≤ deadline (Green banner with celebration)</li>
+                    <li><strong>😢 Train Missed:</strong> g(n) &gt; deadline (Red banner with sad message)</li>
                     <li><strong>Solution Path:</strong> The actual route Nimal should take</li>
                     <li><strong>Exploration Order:</strong> All nodes the algorithm checked</li>
-                    <li><strong>Time Margin:</strong> How early (+) or late (-) Nimal arrives</li>
                   </ul>
                 </div>
 
@@ -1608,54 +1686,8 @@ const SearchAlgorithmTool = () => {
                     <strong>Time Slots</strong> multiply base costs:
                   </p>
                   <ul className="list-disc ml-5 text-gray-600 space-y-1">
-                    <li>Off-Peak: ×1.0 (baseline)</li>
-                    <li>Morning Rush: ×1.8</li>
                     <li>Evening Peak (default): ×2.0 ← Problem scenario</li>
-                    <li>School Pickup: ×1.3</li>
-                    <li>Weekend: ×1.25</li>
-                  </ul>
-                  <p className="text-gray-700 mt-2">
-                    <strong>One-Way Traffic:</strong> Enables Fort area restrictions (realistic peak hour rules)
-                  </p>
-                </div>
-
-                <div className="bg-purple-50 p-4 rounded">
-                  <h4 className="font-semibold text-lg mb-2 text-purple-700">🧪 Algorithm Validation</h4>
-                  <p className="text-gray-700 mb-2">All 8 algorithms are correctly implemented:</p>
-                  <ul className="list-disc ml-5 text-gray-600 space-y-1">
-                    <li><strong>BFS:</strong> Level-by-level exploration</li>
-                    <li><strong>DFS:</strong> Deep exploration with backtracking</li>
-                    <li><strong>IDDFS:</strong> Iterative deepening (BFS memory + DFS completeness)</li>
-                    <li><strong>UCS:</strong> Optimal cost-based search</li>
-                    <li><strong>Greedy:</strong> Heuristic-guided (may not be optimal)</li>
-                    <li><strong>A*:</strong> Optimal informed search (f = g + h)</li>
-                    <li><strong>Bidirectional:</strong> Searches from both ends</li>
-                    <li><strong>Hill Climbing:</strong> Local search (can get stuck)</li>
-                  </ul>
-                </div>
-
-                <div className="bg-indigo-50 p-4 rounded">
-                  <h4 className="font-semibold text-lg mb-2 text-indigo-700">📊 Complexity Analysis</h4>
-                  <p className="text-gray-700 mb-2">The tool displays for each algorithm:</p>
-                  <ul className="list-disc ml-5 text-gray-600 space-y-1">
-                    <li><strong>Time Complexity:</strong> How execution time grows with problem size</li>
-                    <li><strong>Space Complexity:</strong> How memory usage grows with problem size</li>
-                    <li><strong>Completeness:</strong> Will it always find a solution if one exists?</li>
-                    <li><strong>Optimality:</strong> Will it always find the best solution?</li>
-                  </ul>
-                  <p className="text-gray-700 mt-2 text-sm">
-                    <strong>Example:</strong> A* has O(b^d) time complexity, is complete and optimal with admissible heuristics.
-                  </p>
-                </div>
-
-                <div className="bg-cyan-50 p-4 rounded">
-                  <h4 className="font-semibold text-lg mb-2 text-cyan-700">🔄 Comparison Features</h4>
-                  <p className="text-gray-700 mb-2">After running a single algorithm, you can:</p>
-                  <ul className="list-disc ml-5 text-gray-600 space-y-1">
-                    <li>Click <strong>"Compare All Algorithms"</strong> button to run all 8 algorithms at once</li>
-                    <li>See side-by-side performance comparison table</li>
-                    <li>View complexity analysis for all algorithms</li>
-                    <li>Check performance summary with fastest, most efficient algorithms</li>
+                    <li>Off-Peak: ×1.0, Morning Rush: ×1.8, School: ×1.3, Weekend: ×1.25</li>
                   </ul>
                 </div>
 
@@ -1664,21 +1696,18 @@ const SearchAlgorithmTool = () => {
                   <p className="text-gray-700 mb-2">At Evening Peak (×2.0):</p>
                   <ul className="list-disc ml-5 text-gray-600 space-y-1">
                     <li><strong>Optimal path:</strong> Dehiwala → Borella → Maradana = 13 minutes ✅</li>
-                    <li><strong>Deadline:</strong> 27 minutes for Maradana</li>
                     <li><strong>Result:</strong> Train caught with 14 minutes to spare! 🎉</li>
-                    <li><strong>Algorithms that succeed:</strong> All should find a solution</li>
                     <li><strong>Optimal algorithms:</strong> UCS, A* (guaranteed)</li>
                   </ul>
                 </div>
 
-                <div className="bg-red-50 p-4 rounded">
-                  <h4 className="font-semibold text-lg mb-2 text-red-700">💾 Save & Load</h4>
-                  <ul className="list-disc ml-5 text-gray-600 space-y-1">
-                    <li><strong>Download:</strong> Exports graph as JSON file</li>
-                    <li><strong>Upload:</strong> Imports saved configurations</li>
-                    <li><strong>Format:</strong> .json files with all nodes, edges, settings</li>
-                    <li><strong>Use:</strong> Save different scenarios (accidents, new routes, etc.)</li>
-                  </ul>
+                <div className="bg-indigo-50 p-4 rounded">
+                  <h4 className="font-semibold text-lg mb-2 text-indigo-700">🔧 New Feature: Collapsible Managers</h4>
+                  <p className="text-gray-700">
+                    Node and Edge managers are now <strong>collapsible sections</strong> below the visualization! 
+                    Click the headers to expand/collapse them. This keeps the important visualization clearly visible while 
+                    still providing easy access to editing tools when needed.
+                  </p>
                 </div>
               </div>
 
@@ -1689,18 +1718,16 @@ const SearchAlgorithmTool = () => {
                 Got it! Let's find the best route! 🚀
               </button>
 
-              {/* Technical Validation Summary */}
               <div className="mt-6 p-4 bg-gray-100 rounded border-2 border-gray-300">
                 <h4 className="font-bold text-sm mb-2 text-gray-800">✅ Technical Validation Status</h4>
                 <div className="text-xs text-gray-700 space-y-1">
                   <p>✓ Base costs: Verified for ×2.0 = document values</p>
-                  <p>✓ Deadlines: Fort 25min, Maradana 27min</p>
                   <p>✓ All 8 algorithms: Correctly implemented</p>
-                  <p>✓ Complexity analysis: Textbook-accurate</p>
-                  <p>✓ One-way traffic: Fort area restrictions working</p>
-                  <p>✓ Export/Import: JSON format validated</p>
-                  <p>✓ Graph rendering: Real-time updates</p>
-                  <p>✓ Train status: Celebration/sad messages working</p>
+                  <p>✓ g(n) and h(n) clearly distinguished</p>
+                  <p>✓ Heuristic values shown for all nodes (including goals)</p>
+                  <p>✓ Smart node placement prevents overlaps</p>
+                  <p>✓ Collapsible UI for better visualization focus</p>
+                  <p>✓ All features validated and working</p>
                 </div>
               </div>
             </div>
@@ -1713,7 +1740,7 @@ const SearchAlgorithmTool = () => {
               <h3 className="text-lg font-semibold mb-4">Add New Node</h3>
               <input
                 type="text"
-                placeholder="Node Name"
+                placeholder="Node Name (e.g., Pettah)"
                 value={newNode.name}
                 onChange={(e) => setNewNode({...newNode, name: e.target.value})}
                 className="w-full px-3 py-2 border rounded mb-3"
@@ -1721,14 +1748,14 @@ const SearchAlgorithmTool = () => {
               <input
                 type="number"
                 step="0.1"
-                placeholder="Heuristic h(n)"
+                placeholder="Heuristic h(n) - Estimate to goal"
                 value={newNode.h}
                 onChange={(e) => setNewNode({...newNode, h: e.target.value})}
                 className="w-full px-3 py-2 border rounded mb-3"
               />
               <input
                 type="number"
-                placeholder="Deadline (minutes)"
+                placeholder="Deadline (minutes) - Optional"
                 value={newNode.deadline || ''}
                 onChange={(e) => setNewNode({...newNode, deadline: e.target.value})}
                 className="w-full px-3 py-2 border rounded mb-3"
@@ -1739,11 +1766,14 @@ const SearchAlgorithmTool = () => {
                   checked={newNode.isGoal}
                   onChange={(e) => setNewNode({...newNode, isGoal: e.target.checked})}
                 />
-                <span className="text-sm">Goal Node?</span>
+                <span className="text-sm">Is this a goal/destination node?</span>
               </label>
+              <p className="text-xs text-gray-600 mb-4">
+                * Node will be placed automatically to avoid overlaps
+              </p>
               <div className="flex gap-2">
                 <button onClick={addNode} className="flex-1 bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">
-                  Add
+                  Add Node
                 </button>
                 <button onClick={() => setShowAddNode(false)} className="flex-1 bg-gray-300 px-4 py-2 rounded hover:bg-gray-400">
                   Cancel
@@ -1763,7 +1793,7 @@ const SearchAlgorithmTool = () => {
                 className="w-full px-3 py-2 border rounded mb-3"
               >
                 <option value="">From Node</option>
-                {nodes.map(n => <option key={n.id} value={n.id}>{n.name} ({n.id})</option>)}
+                {nodes.map(n => <option key={n.id} value={n.id}>{n.name} (ID: {n.id})</option>)}
               </select>
               <select
                 value={newEdge.to}
@@ -1771,12 +1801,12 @@ const SearchAlgorithmTool = () => {
                 className="w-full px-3 py-2 border rounded mb-3"
               >
                 <option value="">To Node</option>
-                {nodes.map(n => <option key={n.id} value={n.id}>{n.name} ({n.id})</option>)}
+                {nodes.map(n => <option key={n.id} value={n.id}>{n.name} (ID: {n.id})</option>)}
               </select>
               <input
                 type="number"
                 step="0.1"
-                placeholder="Base Cost (min)"
+                placeholder="Base Cost (minutes)"
                 value={newEdge.baseCost}
                 onChange={(e) => setNewEdge({...newEdge, baseCost: e.target.value})}
                 className="w-full px-3 py-2 border rounded mb-3"
@@ -1787,11 +1817,11 @@ const SearchAlgorithmTool = () => {
                   checked={newEdge.isOneWay}
                   onChange={(e) => setNewEdge({...newEdge, isOneWay: e.target.checked})}
                 />
-                <span className="text-sm">One-Way?</span>
+                <span className="text-sm">One-Way Road? (Only from → to)</span>
               </label>
               <div className="flex gap-2">
                 <button onClick={addEdge} className="flex-1 bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">
-                  Add
+                  Add Edge
                 </button>
                 <button onClick={() => setShowAddEdge(false)} className="flex-1 bg-gray-300 px-4 py-2 rounded hover:bg-gray-400">
                   Cancel
@@ -1806,3 +1836,4 @@ const SearchAlgorithmTool = () => {
 };
 
 export default SearchAlgorithmTool;
+                
