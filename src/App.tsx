@@ -1,8 +1,61 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect, ChangeEvent } from 'react';
 import { Play, Plus, Trash2, Download, Upload, Clock, ArrowRight, ArrowLeftRight, AlertCircle, Info, Train, PartyPopper, CloudRain, ChevronDown, ChevronUp, Settings } from 'lucide-react';
 
+// --- TYPE DEFINITIONS ---
+
+interface Node {
+  id: number;
+  name: string;
+  x: number;
+  y: number;
+  isStart: boolean;
+  isGoal: boolean;
+  h: number;
+  deadline?: number;
+}
+
+interface Edge {
+  from: number;
+  to: number;
+  baseCost: number;
+  isOneWay: boolean;
+  direction: 'forward' | 'reverse' | 'both';
+}
+
+interface DeadlineStatus {
+  status: 'success' | 'missed' | 'unknown';
+  margin: number;
+  message: string;
+}
+
+interface AlgorithmResult {
+  algorithm: string;
+  path: number[];
+  traversal: number[];
+  cost: number;
+  nodesExpanded: number;
+  success: boolean;
+  goalReached: string;
+  deadlineStatus: DeadlineStatus;
+  note?: string;
+  compareAll?: false;
+}
+
+interface ComparisonResults {
+  compareAll: true;
+  results: AlgorithmResult[];
+}
+
+type Result = AlgorithmResult | ComparisonResults | null;
+
+type TimeSlotKey = 'off-peak' | 'morning-rush' | 'school-pickup' | 'peak-evening' | 'weekend';
+
+type AlgorithmKey = 'bfs' | 'dfs' | 'dls' | 'iddfs' | 'ucs' | 'greedy' | 'astar' | 'bidirectional' | 'hillclimbing';
+
+// --- COMPONENT ---
+
 const SearchAlgorithmTool = () => {
-  const [nodes, setNodes] = useState([
+  const [nodes, setNodes] = useState<Node[]>([
     { id: 0, name: 'Dehiwala', x: 100, y: 400, isStart: true, isGoal: false, h: 13 },
     { id: 2, name: 'Wellawatte', x: 150, y: 300, isStart: false, isGoal: false, h: 15 },
     { id: 3, name: 'Bambalapitiya', x: 250, y: 250, isStart: false, isGoal: false, h: 12 },
@@ -13,7 +66,7 @@ const SearchAlgorithmTool = () => {
     { id: 8, name: 'Maradana Station', x: 300, y: 500, isStart: false, isGoal: true, h: 0, deadline: 27 }
   ]);
 
-  const [edges, setEdges] = useState([
+  const [edges, setEdges] = useState<Edge[]>([
     { from: 0, to: 2, baseCost: 3, isOneWay: false, direction: 'both' },
     { from: 0, to: 3, baseCost: 4, isOneWay: false, direction: 'both' },
     { from: 0, to: 6, baseCost: 6, isOneWay: false, direction: 'both' },
@@ -29,17 +82,17 @@ const SearchAlgorithmTool = () => {
     { from: 5, to: 8, baseCost: 2, isOneWay: false, direction: 'both' }
   ]);
 
-  const [selectedAlgorithm, setSelectedAlgorithm] = useState('astar');
-  const [results, setResults] = useState(null);
+  const [selectedAlgorithm, setSelectedAlgorithm] = useState<AlgorithmKey>('astar');
+  const [results, setResults] = useState<Result>(null);
   const [showAddNode, setShowAddNode] = useState(false);
   const [showAddEdge, setShowAddEdge] = useState(false);
   const [showInfoModal, setShowInfoModal] = useState(false);
   const [showNodeManager, setShowNodeManager] = useState(false);
   const [showEdgeManager, setShowEdgeManager] = useState(false);
-  const [newNode, setNewNode] = useState({ name: '', h: 0, isGoal: false, deadline: null });
-  const [newEdge, setNewEdge] = useState({ from: '', to: '', baseCost: 0, isOneWay: false });
+  const [newNode, setNewNode] = useState({ name: '', h: '0', isGoal: false, deadline: '' });
+  const [newEdge, setNewEdge] = useState({ from: '', to: '', baseCost: '0', isOneWay: false });
 
-  const algorithmProperties = {
+  const algorithmProperties: { [key: string]: { timeComplexity: string; spaceComplexity: string; complete: string; optimal: string; description: string; } } = {
     'BFS': {
       timeComplexity: 'O(V + E)',
       spaceComplexity: 'O(V)',
@@ -105,12 +158,12 @@ const SearchAlgorithmTool = () => {
     }
   };
   
-  const [timeSlot, setTimeSlot] = useState('peak-evening');
+  const [timeSlot, setTimeSlot] = useState<TimeSlotKey>('peak-evening');
   const [oneWayEnabled, setOneWayEnabled] = useState(false);
   const [showTrafficConfig, setShowTrafficConfig] = useState(false);
   const [depthLimit, setDepthLimit] = useState(3);
 
-  const timeSlots = {
+  const timeSlots: { [key in TimeSlotKey]: { name: string; multiplier: number } } = {
     'off-peak': { name: 'Off-Peak (10 AM - 3 PM)', multiplier: 1.0 },
     'morning-rush': { name: 'Morning Rush (7:30 AM - 9:15 AM)', multiplier: 1.8 },
     'school-pickup': { name: 'School Pickup (12:45 PM - 2:15 PM)', multiplier: 1.3 },
@@ -123,7 +176,7 @@ const SearchAlgorithmTool = () => {
     { from: 5, to: 6, restrictedDirection: 'reverse', peakCost: 12 },
   ];
 
-  const findNonOverlappingPosition = () => {
+  const findNonOverlappingPosition = (): { x: number, y: number } => {
     const svgWidth = 600;
     const svgHeight = 600;
     const minDistance = 80;
@@ -156,7 +209,7 @@ const SearchAlgorithmTool = () => {
     };
   };
 
-  const getEdgeCost = (from, to) => {
+  const getEdgeCost = (from: number, to: number): number => {
     const edge = edges.find(e => 
       (e.from === from && e.to === to) || 
       (e.to === from && e.from === to)
@@ -185,8 +238,8 @@ const SearchAlgorithmTool = () => {
     return edge.baseCost * timeSlots[timeSlot].multiplier;
   };
 
-  const getNeighbors = (nodeId) => {
-    const neighbors = [];
+  const getNeighbors = (nodeId: number): number[] => {
+    const neighbors: number[] = [];
     edges.forEach(edge => {
       if (oneWayEnabled && edge.isOneWay) {
         if (edge.direction === 'forward' && edge.from === nodeId) {
@@ -205,7 +258,7 @@ const SearchAlgorithmTool = () => {
     return [...new Set(neighbors)];
   };
 
-  const calculatePathCost = (path) => {
+  const calculatePathCost = (path: number[]): number => {
     let cost = 0;
     for (let i = 0; i < path.length - 1; i++) {
       cost += getEdgeCost(path[i], path[i + 1]);
@@ -213,9 +266,9 @@ const SearchAlgorithmTool = () => {
     return Math.round(cost * 10) / 10;
   };
 
-  const checkDeadline = (goalId, travelTime) => {
+  const checkDeadline = (goalId: number, travelTime: number): DeadlineStatus => {
     const goalNode = nodes.find(n => n.id === goalId);
-    if (!goalNode || !goalNode.deadline) return { status: 'unknown', margin: 0 };
+    if (!goalNode || typeof goalNode.deadline === 'undefined') return { status: 'unknown', margin: 0, message: 'No deadline specified' };
     
     const deadline = goalNode.deadline;
     if (travelTime <= deadline) {
@@ -233,16 +286,30 @@ const SearchAlgorithmTool = () => {
     }
   };
 
-  const bfs = () => {
+  const createFailureResult = (algorithm: string, traversalOrder: number[], nodesExpanded: number, message: string): AlgorithmResult => ({
+    algorithm,
+    path: [],
+    traversal: traversalOrder,
+    cost: Infinity,
+    nodesExpanded,
+    success: false,
+    goalReached: 'None',
+    deadlineStatus: { status: 'missed', margin: Infinity, message }
+  });
+
+  const bfs = (): AlgorithmResult => {
     const start = nodes.find(n => n.isStart);
+    if (!start) return createFailureResult('BFS', [], 0, 'Start node not found');
+    
     const goals = nodes.filter(n => n.isGoal);
-    const queue = [[start.id]];
-    const visited = new Set([start.id]);
-    const traversalOrder = [start.id];
+    const queue: number[][] = [[start.id]];
+    const visited = new Set<number>([start.id]);
+    const traversalOrder: number[] = [start.id];
     let nodesExpanded = 0;
 
     while (queue.length > 0) {
       const path = queue.shift();
+      if (!path) continue;
       const current = path[path.length - 1];
       nodesExpanded++;
 
@@ -257,7 +324,7 @@ const SearchAlgorithmTool = () => {
           cost,
           nodesExpanded,
           success: true,
-          goalReached: goalNode.name,
+          goalReached: goalNode?.name || `ID: ${current}`,
           deadlineStatus: deadline
         };
       }
@@ -272,27 +339,23 @@ const SearchAlgorithmTool = () => {
       }
     }
 
-    return { 
-      algorithm: 'BFS', 
-      path: [], 
-      traversal: traversalOrder, 
-      cost: Infinity, 
-      nodesExpanded, 
-      success: false,
-      deadlineStatus: { status: 'missed', margin: Infinity, message: 'No path found' }
-    };
+    return createFailureResult('BFS', traversalOrder, nodesExpanded, 'No path found');
   };
 
-  const dfs = () => {
+  const dfs = (): AlgorithmResult => {
     const start = nodes.find(n => n.isStart);
+    if (!start) return createFailureResult('DFS', [], 0, 'Start node not found');
+
     const goals = nodes.filter(n => n.isGoal);
-    const stack = [[start.id]];
-    const visited = new Set();
-    const traversalOrder = [];
+    const stack: number[][] = [[start.id]];
+    const visited = new Set<number>();
+    const traversalOrder: number[] = [];
     let nodesExpanded = 0;
 
     while (stack.length > 0) {
       const path = stack.pop();
+      if (!path) continue;
+
       const current = path[path.length - 1];
 
       if (visited.has(current)) continue;
@@ -311,7 +374,7 @@ const SearchAlgorithmTool = () => {
           cost,
           nodesExpanded,
           success: true,
-          goalReached: goalNode.name,
+          goalReached: goalNode?.name || `ID: ${current}`,
           deadlineStatus: deadline
         };
       }
@@ -324,24 +387,18 @@ const SearchAlgorithmTool = () => {
       }
     }
 
-    return { 
-      algorithm: 'DFS', 
-      path: [], 
-      traversal: traversalOrder, 
-      cost: Infinity, 
-      nodesExpanded, 
-      success: false,
-      deadlineStatus: { status: 'missed', margin: Infinity, message: 'No path found' }
-    };
+    return createFailureResult('DFS', traversalOrder, nodesExpanded, 'No path found');
   };
 
-  const dls = () => {
+  const dls = (): AlgorithmResult => {
     const start = nodes.find(n => n.isStart);
+    if (!start) return createFailureResult('DLS', [], 0, 'Start node not found');
+    
     const goals = nodes.filter(n => n.isGoal);
     let nodesExpanded = 0;
-    const traversalOrder = [];
+    const traversalOrder: number[] = [];
 
-    const dfsLimited = (path, depth, visited) => {
+    const dfsLimited = (path: number[], depth: number, visited: Set<number>): number[] | null => {
       const current = path[path.length - 1];
       nodesExpanded++;
       if (!traversalOrder.includes(current)) traversalOrder.push(current);
@@ -365,44 +422,41 @@ const SearchAlgorithmTool = () => {
     };
 
     const visited = new Set([start.id]);
-    const result = dfsLimited([start.id], depthLimit, visited);
+    const resultPath = dfsLimited([start.id], depthLimit, visited);
 
-    if (result) {
-      const goalNode = nodes.find(n => n.id === result[result.length - 1]);
-      const cost = calculatePathCost(result);
-      const deadline = checkDeadline(result[result.length - 1], cost);
+    if (resultPath) {
+      const goalId = resultPath[resultPath.length - 1];
+      const goalNode = nodes.find(n => n.id === goalId);
+      const cost = calculatePathCost(resultPath);
+      const deadline = checkDeadline(goalId, cost);
       return {
         algorithm: 'DLS',
-        path: result,
+        path: resultPath,
         traversal: traversalOrder,
         cost,
         nodesExpanded,
         success: true,
-        goalReached: goalNode.name,
+        goalReached: goalNode?.name || `ID: ${goalId}`,
         deadlineStatus: deadline,
         note: `Depth limit: ${depthLimit}`
       };
     }
 
     return {
-      algorithm: 'DLS',
-      path: [],
-      traversal: traversalOrder,
-      cost: Infinity,
-      nodesExpanded,
-      success: false,
-      deadlineStatus: { status: 'missed', margin: Infinity, message: 'No path found within depth limit' },
+      ...createFailureResult('DLS', traversalOrder, nodesExpanded, 'No path found within depth limit'),
       note: `Depth limit: ${depthLimit}`
     };
   };
 
-  const iddfs = () => {
+  const iddfs = (): AlgorithmResult => {
     const start = nodes.find(n => n.isStart);
+    if (!start) return createFailureResult('IDDFS', [], 0, 'Start node not found');
+
     const goals = nodes.filter(n => n.isGoal);
     let totalNodesExpanded = 0;
-    const traversalOrder = [];
+    const traversalOrder: number[] = [];
 
-    const dfsLimited = (path, depth, visited) => {
+    const dfsLimited = (path: number[], depth: number, visited: Set<number>): number[] | null => {
       const current = path[path.length - 1];
       totalNodesExpanded++;
       if (!traversalOrder.includes(current)) traversalOrder.push(current);
@@ -427,46 +481,44 @@ const SearchAlgorithmTool = () => {
 
     for (let depth = 0; depth <= nodes.length; depth++) {
       const visited = new Set([start.id]);
-      const result = dfsLimited([start.id], depth, visited);
-      if (result) {
-        const goalNode = nodes.find(n => n.id === result[result.length - 1]);
-        const cost = calculatePathCost(result);
-        const deadline = checkDeadline(result[result.length - 1], cost);
+      const resultPath = dfsLimited([start.id], depth, visited);
+      if (resultPath) {
+        const goalId = resultPath[resultPath.length - 1];
+        const goalNode = nodes.find(n => n.id === goalId);
+        const cost = calculatePathCost(resultPath);
+        const deadline = checkDeadline(goalId, cost);
         return {
           algorithm: 'IDDFS',
-          path: result,
+          path: resultPath,
           traversal: traversalOrder,
           cost,
           nodesExpanded: totalNodesExpanded,
           success: true,
-          goalReached: goalNode.name,
+          goalReached: goalNode?.name || `ID: ${goalId}`,
           deadlineStatus: deadline
         };
       }
     }
 
-    return {
-      algorithm: 'IDDFS',
-      path: [],
-      traversal: traversalOrder,
-      cost: Infinity,
-      nodesExpanded: totalNodesExpanded,
-      success: false,
-      deadlineStatus: { status: 'missed', margin: Infinity, message: 'No path found' }
-    };
+    return createFailureResult('IDDFS', traversalOrder, totalNodesExpanded, 'No path found');
   };
 
-  const ucs = () => {
+  const ucs = (): AlgorithmResult => {
     const start = nodes.find(n => n.isStart);
+    if (!start) return createFailureResult('UCS', [], 0, 'Start node not found');
+
     const goals = nodes.filter(n => n.isGoal);
-    const pq = [{ path: [start.id], cost: 0 }];
-    const visited = new Set();
-    const traversalOrder = [];
+    const pq: { path: number[], cost: number }[] = [{ path: [start.id], cost: 0 }];
+    const visited = new Set<number>();
+    const traversalOrder: number[] = [];
     let nodesExpanded = 0;
 
     while (pq.length > 0) {
       pq.sort((a, b) => a.cost - b.cost);
-      const { path, cost } = pq.shift();
+      const dequeued = pq.shift();
+      if (!dequeued) continue;
+      const { path, cost } = dequeued;
+      
       const current = path[path.length - 1];
 
       if (visited.has(current)) continue;
@@ -485,7 +537,7 @@ const SearchAlgorithmTool = () => {
           cost: finalCost,
           nodesExpanded,
           success: true,
-          goalReached: goalNode.name,
+          goalReached: goalNode?.name || `ID: ${current}`,
           deadlineStatus: deadline
         };
       }
@@ -501,28 +553,25 @@ const SearchAlgorithmTool = () => {
       }
     }
 
-    return { 
-      algorithm: 'UCS', 
-      path: [], 
-      traversal: traversalOrder, 
-      cost: Infinity, 
-      nodesExpanded, 
-      success: false,
-      deadlineStatus: { status: 'missed', margin: Infinity, message: 'No path found' }
-    };
+    return createFailureResult('UCS', traversalOrder, nodesExpanded, 'No path found');
   };
 
-  const greedy = () => {
+  const greedy = (): AlgorithmResult => {
     const start = nodes.find(n => n.isStart);
+    if (!start) return createFailureResult('Greedy', [], 0, 'Start node not found');
+
     const goals = nodes.filter(n => n.isGoal);
-    const pq = [{ path: [start.id], h: start.h }];
-    const visited = new Set();
-    const traversalOrder = [];
+    const pq: { path: number[], h: number }[] = [{ path: [start.id], h: start.h }];
+    const visited = new Set<number>();
+    const traversalOrder: number[] = [];
     let nodesExpanded = 0;
 
     while (pq.length > 0) {
       pq.sort((a, b) => a.h - b.h);
-      const { path } = pq.shift();
+      const dequeued = pq.shift();
+      if (!dequeued) continue;
+      const { path } = dequeued;
+
       const current = path[path.length - 1];
 
       if (visited.has(current)) continue;
@@ -541,42 +590,39 @@ const SearchAlgorithmTool = () => {
           cost,
           nodesExpanded,
           success: true,
-          goalReached: goalNode.name,
+          goalReached: goalNode?.name || `ID: ${current}`,
           deadlineStatus: deadline
         };
       }
 
       const neighbors = getNeighbors(current);
       for (const neighbor of neighbors) {
-        if (!visited.has(neighbor)) {
-          const node = nodes.find(n => n.id === neighbor);
+        const node = nodes.find(n => n.id === neighbor);
+        if (!visited.has(neighbor) && node) {
           pq.push({ path: [...path, neighbor], h: node.h });
         }
       }
     }
 
-    return { 
-      algorithm: 'Greedy', 
-      path: [], 
-      traversal: traversalOrder, 
-      cost: Infinity, 
-      nodesExpanded, 
-      success: false,
-      deadlineStatus: { status: 'missed', margin: Infinity, message: 'No path found' }
-    };
+    return createFailureResult('Greedy', traversalOrder, nodesExpanded, 'No path found');
   };
 
-  const aStar = () => {
+  const aStar = (): AlgorithmResult => {
     const start = nodes.find(n => n.isStart);
+    if (!start) return createFailureResult('A*', [], 0, 'Start node not found');
+
     const goals = nodes.filter(n => n.isGoal);
-    const pq = [{ path: [start.id], g: 0, f: start.h }];
-    const visited = new Set();
-    const traversalOrder = [];
+    const pq: { path: number[], g: number, f: number }[] = [{ path: [start.id], g: 0, f: start.h }];
+    const visited = new Set<number>();
+    const traversalOrder: number[] = [];
     let nodesExpanded = 0;
 
     while (pq.length > 0) {
       pq.sort((a, b) => a.f - b.f);
-      const { path, g } = pq.shift();
+      const dequeued = pq.shift();
+      if (!dequeued) continue;
+      const { path, g } = dequeued;
+      
       const current = path[path.length - 1];
 
       if (visited.has(current)) continue;
@@ -595,7 +641,7 @@ const SearchAlgorithmTool = () => {
           cost: finalCost,
           nodesExpanded,
           success: true,
-          goalReached: goalNode.name,
+          goalReached: goalNode?.name || `ID: ${current}`,
           deadlineStatus: deadline
         };
       }
@@ -606,74 +652,68 @@ const SearchAlgorithmTool = () => {
           const edgeCost = getEdgeCost(current, neighbor);
           if (edgeCost !== Infinity) {
             const node = nodes.find(n => n.id === neighbor);
-            const newG = g + edgeCost;
-            pq.push({ path: [...path, neighbor], g: newG, f: newG + node.h });
+            if (node) {
+              const newG = g + edgeCost;
+              pq.push({ path: [...path, neighbor], g: newG, f: newG + node.h });
+            }
           }
         }
       }
     }
 
-    return { 
-      algorithm: 'A*', 
-      path: [], 
-      traversal: traversalOrder, 
-      cost: Infinity, 
-      nodesExpanded, 
-      success: false,
-      deadlineStatus: { status: 'missed', margin: Infinity, message: 'No path found' }
-    };
+    return createFailureResult('A*', traversalOrder, nodesExpanded, 'No path found');
   };
 
-  const bidirectional = () => {
+  const bidirectional = (): AlgorithmResult => {
     const start = nodes.find(n => n.isStart);
+    if (!start) return createFailureResult('Bidirectional', [], 0, 'Start node not found');
+
     const goals = nodes.filter(n => n.isGoal);
     
     if (goals.length !== 1) {
       return { 
-        algorithm: 'Bidirectional', 
-        path: [], 
-        traversal: [], 
-        cost: Infinity, 
-        nodesExpanded: 0, 
-        success: false, 
+        ...createFailureResult('Bidirectional', [], 0, 'Multiple goals not supported'),
         note: 'Works best with single goal',
-        deadlineStatus: { status: 'missed', margin: Infinity, message: 'Multiple goals not supported' }
       };
     }
 
     const goal = goals[0];
-    const forwardQueue = [[start.id]];
-    const backwardQueue = [[goal.id]];
-    const forwardVisited = new Map([[start.id, [start.id]]]);
-    const backwardVisited = new Map([[goal.id, [goal.id]]]);
-    const traversalOrder = [start.id, goal.id];
+    const forwardQueue: number[][] = [[start.id]];
+    const backwardQueue: number[][] = [[goal.id]];
+    const forwardVisited = new Map<number, number[]>([[start.id, [start.id]]]);
+    const backwardVisited = new Map<number, number[]>([[goal.id, [goal.id]]]);
+    const traversalOrder: number[] = [start.id, goal.id];
     let nodesExpanded = 0;
 
     while (forwardQueue.length > 0 && backwardQueue.length > 0) {
-      if (forwardQueue.length > 0) {
-        const fPath = forwardQueue.shift();
+      // Forward search
+      const fPath = forwardQueue.shift();
+      if (fPath) {
         const fCurrent = fPath[fPath.length - 1];
         nodesExpanded++;
 
         if (backwardVisited.has(fCurrent)) {
-          const bPath = backwardVisited.get(fCurrent).slice().reverse();
-          const fullPath = [...fPath, ...bPath.slice(1)];
-          const cost = calculatePathCost(fullPath);
-          const deadline = checkDeadline(goal.id, cost);
-          return {
-            algorithm: 'Bidirectional',
-            path: fullPath,
-            traversal: traversalOrder,
-            cost,
-            nodesExpanded,
-            success: true,
-            goalReached: goal.name,
-            deadlineStatus: deadline
-          };
+          const bPathSegment = backwardVisited.get(fCurrent);
+          if (bPathSegment) {
+            const bPath = bPathSegment.slice().reverse();
+            const fullPath = [...fPath, ...bPath.slice(1)];
+            const cost = calculatePathCost(fullPath);
+            const deadline = checkDeadline(goal.id, cost);
+            return {
+              algorithm: 'Bidirectional',
+              path: fullPath,
+              traversal: traversalOrder,
+              cost,
+              nodesExpanded,
+              success: true,
+              goalReached: goal.name,
+              deadlineStatus: deadline
+            };
+          }
         }
 
-        const neighbors = getNeighbors(fCurrent);
-        for (const neighbor of neighbors) {
+        const fNeighbors = getNeighbors(fCurrent);
+        for (const neighbor of fNeighbors) {
           if (!forwardVisited.has(neighbor)) {
             const newPath = [...fPath, neighbor];
             forwardVisited.set(neighbor, newPath);
@@ -683,30 +723,33 @@ const SearchAlgorithmTool = () => {
         }
       }
 
-      if (backwardQueue.length > 0) {
-        const bPath = backwardQueue.shift();
+      // Backward search
+      const bPath = backwardQueue.shift();
+      if (bPath) {
         const bCurrent = bPath[bPath.length - 1];
         nodesExpanded++;
 
         if (forwardVisited.has(bCurrent)) {
-          const fPath = forwardVisited.get(bCurrent);
-          const fullPath = [...fPath, ...bPath.slice().reverse().slice(1)];
-          const cost = calculatePathCost(fullPath);
-          const deadline = checkDeadline(goal.id, cost);
-          return {
-            algorithm: 'Bidirectional',
-            path: fullPath,
-            traversal: traversalOrder,
-            cost,
-            nodesExpanded,
-            success: true,
-            goalReached: goal.name,
-            deadlineStatus: deadline
-          };
+          const fPathSegment = forwardVisited.get(bCurrent);
+          if (fPathSegment) {
+            const fullPath = [...fPathSegment, ...bPath.slice().reverse().slice(1)];
+            const cost = calculatePathCost(fullPath);
+            const deadline = checkDeadline(goal.id, cost);
+            return {
+              algorithm: 'Bidirectional',
+              path: fullPath,
+              traversal: traversalOrder,
+              cost,
+              nodesExpanded,
+              success: true,
+              goalReached: goal.name,
+              deadlineStatus: deadline
+            };
+          }
         }
 
-        const neighbors = getNeighbors(bCurrent);
-        for (const neighbor of neighbors) {
+        const bNeighbors = getNeighbors(bCurrent);
+        for (const neighbor of bNeighbors) {
           if (!backwardVisited.has(neighbor)) {
             const newPath = [...bPath, neighbor];
             backwardVisited.set(neighbor, newPath);
@@ -717,55 +760,49 @@ const SearchAlgorithmTool = () => {
       }
     }
 
-    return { 
-      algorithm: 'Bidirectional', 
-      path: [], 
-      traversal: traversalOrder, 
-      cost: Infinity, 
-      nodesExpanded, 
-      success: false,
-      deadlineStatus: { status: 'missed', margin: Infinity, message: 'No path found' }
-    };
+    return createFailureResult('Bidirectional', traversalOrder, nodesExpanded, 'No path found');
   };
 
-  const hillClimbing = () => {
+  const hillClimbing = (): AlgorithmResult => {
     const start = nodes.find(n => n.isStart);
+    if (!start) return createFailureResult('Hill Climbing', [], 0, 'Start node not found');
+
     const goals = nodes.filter(n => n.isGoal);
-    let current = start.id;
-    const path = [current];
-    const traversalOrder = [current];
-    let nodesExpanded = 1; // Count the start node
-    const visited = new Set([current]);
+    let currentId = start.id;
+    const path: number[] = [currentId];
+    const traversalOrder: number[] = [currentId];
+    let nodesExpanded = 1; 
+    const visited = new Set<number>([currentId]);
 
-    while (!goals.some(g => g.id === current)) {
-      const neighbors = getNeighbors(current).filter(n => !visited.has(n));
-
+    while (!goals.some(g => g.id === currentId)) {
+      const neighbors = getNeighbors(currentId).filter(n => !visited.has(n));
       if (neighbors.length === 0) break;
 
-      let best = neighbors[0];
-      let bestH = nodes.find(n => n.id === best).h;
+      let bestNeighborId: number | null = null;
+      let bestH = Infinity;
 
-      for (const neighbor of neighbors) {
-        const h = nodes.find(n => n.id === neighbor).h;
-        if (h < bestH) {
-          best = neighbor;
-          bestH = h;
+      for (const neighborId of neighbors) {
+        const neighborNode = nodes.find(n => n.id === neighborId);
+        if (neighborNode && neighborNode.h < bestH) {
+          bestNeighborId = neighborId;
+          bestH = neighborNode.h;
         }
       }
 
-      const currentH = nodes.find(n => n.id === current).h;
-      if (bestH >= currentH) break;
+      const currentNode = nodes.find(n => n.id === currentId);
+      if (!currentNode || !bestNeighborId || bestH >= currentNode.h) break; // Stuck
 
-      current = best;
-      visited.add(current);
-      path.push(current);
-      traversalOrder.push(current);
-      nodesExpanded++; // Count each node we move to
+      currentId = bestNeighborId;
+      visited.add(currentId);
+      path.push(currentId);
+      traversalOrder.push(currentId);
+      nodesExpanded++;
     }
 
-    const success = goals.some(g => g.id === current);
+    const success = goals.some(g => g.id === currentId);
     const cost = success ? calculatePathCost(path) : Infinity;
-    const deadline = success ? checkDeadline(current, cost) : { status: 'missed', margin: Infinity, message: 'Stuck at local optimum' };
+    const deadline = success ? checkDeadline(currentId, cost) : { status: 'missed' as const, margin: Infinity, message: 'Stuck at local optimum' };
+    const goalNode = success ? nodes.find(n => n.id === currentId) : null;
 
     return {
       algorithm: 'Hill Climbing',
@@ -774,13 +811,13 @@ const SearchAlgorithmTool = () => {
       cost,
       nodesExpanded,
       success,
-      goalReached: success ? nodes.find(n => n.id === current).name : 'None',
+      goalReached: goalNode ? goalNode.name : 'None',
       deadlineStatus: deadline
     };
   };
 
   const runAlgorithm = () => {
-    let result;
+    let result: AlgorithmResult;
     switch (selectedAlgorithm) {
       case 'bfs': result = bfs(); break;
       case 'dfs': result = dfs(); break;
@@ -797,7 +834,7 @@ const SearchAlgorithmTool = () => {
   };
 
   const runAllAlgorithms = () => {
-    const algorithms = ['bfs', 'dfs', 'dls', 'iddfs', 'ucs', 'greedy', 'astar', 'bidirectional', 'hillclimbing'];
+    const algorithms: AlgorithmKey[] = ['bfs', 'dfs', 'dls', 'iddfs', 'ucs', 'greedy', 'astar', 'bidirectional', 'hillclimbing'];
     const allResults = algorithms.map(alg => {
       switch (alg) {
         case 'bfs': return bfs();
@@ -811,7 +848,8 @@ const SearchAlgorithmTool = () => {
         case 'hillclimbing': return hillClimbing();
         default: return null;
       }
-    });
+    }).filter((r): r is AlgorithmResult => r !== null);
+    
     setResults({ compareAll: true, results: allResults });
   };
 
@@ -827,7 +865,7 @@ const SearchAlgorithmTool = () => {
           ...edge,
           isOneWay: true,
           direction: restriction.restrictedDirection === 'reverse' ? 'forward' : 'both'
-        };
+        } as Edge;
       }
       return edge;
     });
@@ -836,24 +874,29 @@ const SearchAlgorithmTool = () => {
 
   useEffect(() => {
     applyOneWayRestrictions();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [oneWayEnabled]);
 
   const addNode = () => {
     if (!newNode.name) return;
     const maxId = Math.max(...nodes.map(n => n.id), -1);
     const position = findNonOverlappingPosition();
+    const hValue = parseFloat(newNode.h) || 0;
+    const deadlineValue = newNode.deadline ? parseFloat(newNode.deadline) : undefined;
     
-    setNodes([...nodes, {
+    const nodeToAdd: Node = {
       id: maxId + 1,
       name: newNode.name,
       x: position.x,
       y: position.y,
       isStart: false,
       isGoal: newNode.isGoal,
-      h: parseFloat(newNode.h) || 0,
-      deadline: newNode.deadline ? parseFloat(newNode.deadline) : null
-    }]);
-    setNewNode({ name: '', h: 0, isGoal: false, deadline: null });
+      h: hValue,
+      deadline: deadlineValue
+    };
+
+    setNodes([...nodes, nodeToAdd]);
+    setNewNode({ name: '', h: '0', isGoal: false, deadline: '' });
     setShowAddNode(false);
   };
 
@@ -861,18 +904,27 @@ const SearchAlgorithmTool = () => {
     const from = parseInt(newEdge.from);
     const to = parseInt(newEdge.to);
     const baseCost = parseFloat(newEdge.baseCost);
-    if (isNaN(from) || isNaN(to) || isNaN(baseCost)) return;
-    setEdges([...edges, { from, to, baseCost, isOneWay: newEdge.isOneWay, direction: 'both' }]);
-    setNewEdge({ from: '', to: '', baseCost: 0, isOneWay: false });
+    if (isNaN(from) || isNaN(to) || isNaN(baseCost) || from === to) return;
+    
+    const edgeToAdd: Edge = {
+      from,
+      to,
+      baseCost,
+      isOneWay: newEdge.isOneWay,
+      direction: 'both' // Default, can be adjusted if UI supports it
+    };
+
+    setEdges([...edges, edgeToAdd]);
+    setNewEdge({ from: '', to: '', baseCost: '0', isOneWay: false });
     setShowAddEdge(false);
   };
 
-  const deleteNode = (id) => {
+  const deleteNode = (id: number) => {
     setNodes(nodes.filter(n => n.id !== id));
     setEdges(edges.filter(e => e.from !== id && e.to !== id));
   };
 
-  const deleteEdge = (index) => {
+  const deleteEdge = (index: number) => {
     setEdges(edges.filter((_, i) => i !== index));
   };
 
@@ -900,13 +952,15 @@ const SearchAlgorithmTool = () => {
     URL.revokeObjectURL(url);
   };
 
-  const importData = (e) => {
-    const file = e.target.files[0];
+  const importData = (e: ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
     if (!file) return;
     const reader = new FileReader();
     reader.onload = (event) => {
       try {
-        const data = JSON.parse(event.target.result);
+        const result = event.target?.result;
+        if (typeof result !== 'string') throw new Error("Invalid file content");
+        const data = JSON.parse(result);
         if (data.nodes && data.edges) {
           setNodes(data.nodes);
           setEdges(data.edges);
@@ -975,7 +1029,7 @@ const SearchAlgorithmTool = () => {
               </label>
               <select
                 value={timeSlot}
-                onChange={(e) => setTimeSlot(e.target.value)}
+                onChange={(e) => setTimeSlot(e.target.value as TimeSlotKey)}
                 className="w-full px-3 py-2 border border-gray-300 rounded-md bg-white"
               >
                 {Object.entries(timeSlots).map(([key, value]) => (
@@ -1031,7 +1085,7 @@ const SearchAlgorithmTool = () => {
               </label>
               <select
                 value={selectedAlgorithm}
-                onChange={(e) => setSelectedAlgorithm(e.target.value)}
+                onChange={(e) => setSelectedAlgorithm(e.target.value as AlgorithmKey)}
                 className="w-full px-3 py-2 border border-gray-300 rounded-md"
               >
                 <optgroup label="Uninformed Search">
@@ -1129,7 +1183,7 @@ const SearchAlgorithmTool = () => {
                 if (!fromNode || !toNode) return null;
                 
                 const isInPath = results && !results.compareAll && results.path && 
-                  results.path.some((id, i) => 
+                  results.path.some((_, i) => 
                     i < results.path.length - 1 && 
                     ((results.path[i] === edge.from && results.path[i + 1] === edge.to) ||
                      (results.path[i] === edge.to && results.path[i + 1] === edge.from))
@@ -1174,8 +1228,8 @@ const SearchAlgorithmTool = () => {
               })}
 
               {nodes.map(node => {
-                const isInPath = results && !results.compareAll && results.path && results.path.includes(node.id);
-                const isInTraversal = results && !results.compareAll && results.traversal && results.traversal.includes(node.id) && !isInPath;
+                const isInPath = results && !results.compareAll && results.path?.includes(node.id);
+                const isInTraversal = results && !results.compareAll && results.traversal?.includes(node.id) && !isInPath;
 
                 return (
                   <g key={node.id}>
@@ -1300,7 +1354,8 @@ const SearchAlgorithmTool = () => {
                             type="number"
                             value={node.deadline || ''}
                             onChange={(e) => {
-                              const updated = nodes.map(n => n.id === node.id ? {...n, deadline: e.target.value ? parseFloat(e.target.value) : null} : n);
+                              const deadlineValue = e.target.value ? parseFloat(e.target.value) : undefined;
+                              const updated = nodes.map(n => n.id === node.id ? {...n, deadline: deadlineValue} : n);
                               setNodes(updated);
                             }}
                             placeholder="Deadline"
@@ -1469,7 +1524,7 @@ const SearchAlgorithmTool = () => {
               <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-6">
                 <div className={`p-4 rounded ${results.deadlineStatus?.status === 'success' ? 'bg-green-50' : 'bg-red-50'}`}>
                   <p className="text-sm text-gray-600">Actual Path Cost (g)</p>
-                  <p className="text-xl font-bold">{results.cost === Infinity ? '∞' : results.cost} min</p>
+                  <p className="text-xl font-bold">{results.cost === Infinity ? '∞' : `${results.cost} min`}</p>
                 </div>
                 <div className="p-4 bg-purple-50 rounded">
                   <p className="text-sm text-gray-600">Nodes Expanded</p>
@@ -1574,7 +1629,9 @@ const SearchAlgorithmTool = () => {
                   </thead>
                   <tbody>
                     {results.results.map((result, idx) => {
-                      const minCost = Math.min(...results.results.filter(r => r.success && r.deadlineStatus?.status === 'success').map(r => r.cost));
+                      const successfulResults = results.results.filter(r => r.success && r.deadlineStatus?.status === 'success');
+                      const minCost = successfulResults.length > 0 ? Math.min(...successfulResults.map(r => r.cost)) : Infinity;
+
                       const isOptimal = result.success && result.deadlineStatus?.status === 'success' && result.cost === minCost;
                       const goalNode = nodes.find(n => n.id === result.path[result.path.length - 1]);
                       const deadline = goalNode?.deadline || 0;
@@ -1943,4 +2000,3 @@ const SearchAlgorithmTool = () => {
 };
 
 export default SearchAlgorithmTool;
-                
