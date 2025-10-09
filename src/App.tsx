@@ -54,6 +54,13 @@ const SearchAlgorithmTool = () => {
       optimal: 'No',
       description: 'Not complete in infinite spaces, not optimal'
     },
+    'DLS': {
+      timeComplexity: 'O(b^l)',
+      spaceComplexity: 'O(l)',
+      complete: 'Yes (if goal ≤ l)',
+      optimal: 'No',
+      description: 'Complete if solution within depth limit l, not optimal'
+    },
     'IDDFS': {
       timeComplexity: 'O(b^d)',
       spaceComplexity: 'O(d)',
@@ -101,6 +108,7 @@ const SearchAlgorithmTool = () => {
   const [timeSlot, setTimeSlot] = useState('peak-evening');
   const [oneWayEnabled, setOneWayEnabled] = useState(false);
   const [showTrafficConfig, setShowTrafficConfig] = useState(false);
+  const [depthLimit, setDepthLimit] = useState(3);
 
   const timeSlots = {
     'off-peak': { name: 'Off-Peak (10 AM - 3 PM)', multiplier: 1.0 },
@@ -327,6 +335,67 @@ const SearchAlgorithmTool = () => {
     };
   };
 
+  const dls = () => {
+    const start = nodes.find(n => n.isStart);
+    const goals = nodes.filter(n => n.isGoal);
+    let nodesExpanded = 0;
+    const traversalOrder = [];
+
+    const dfsLimited = (path, depth, visited) => {
+      const current = path[path.length - 1];
+      nodesExpanded++;
+      if (!traversalOrder.includes(current)) traversalOrder.push(current);
+
+      if (goals.some(g => g.id === current)) {
+        return path;
+      }
+
+      if (depth === 0) return null;
+
+      const neighbors = getNeighbors(current);
+      for (const neighbor of neighbors) {
+        if (!visited.has(neighbor)) {
+          const newVisited = new Set(visited);
+          newVisited.add(neighbor);
+          const result = dfsLimited([...path, neighbor], depth - 1, newVisited);
+          if (result) return result;
+        }
+      }
+      return null;
+    };
+
+    const visited = new Set([start.id]);
+    const result = dfsLimited([start.id], depthLimit, visited);
+
+    if (result) {
+      const goalNode = nodes.find(n => n.id === result[result.length - 1]);
+      const cost = calculatePathCost(result);
+      const deadline = checkDeadline(result[result.length - 1], cost);
+      return {
+        algorithm: 'DLS',
+        path: result,
+        traversal: traversalOrder,
+        cost,
+        nodesExpanded,
+        success: true,
+        goalReached: goalNode.name,
+        deadlineStatus: deadline,
+        note: `Depth limit: ${depthLimit}`
+      };
+    }
+
+    return {
+      algorithm: 'DLS',
+      path: [],
+      traversal: traversalOrder,
+      cost: Infinity,
+      nodesExpanded,
+      success: false,
+      deadlineStatus: { status: 'missed', margin: Infinity, message: 'No path found within depth limit' },
+      note: `Depth limit: ${depthLimit}`
+    };
+  };
+
   const iddfs = () => {
     const start = nodes.find(n => n.isStart);
     const goals = nodes.filter(n => n.isGoal);
@@ -376,12 +445,12 @@ const SearchAlgorithmTool = () => {
       }
     }
 
-    return { 
-      algorithm: 'IDDFS', 
-      path: [], 
-      traversal: traversalOrder, 
-      cost: Infinity, 
-      nodesExpanded: totalNodesExpanded, 
+    return {
+      algorithm: 'IDDFS',
+      path: [],
+      traversal: traversalOrder,
+      cost: Infinity,
+      nodesExpanded: totalNodesExpanded,
       success: false,
       deadlineStatus: { status: 'missed', margin: Infinity, message: 'No path found' }
     };
@@ -665,18 +734,17 @@ const SearchAlgorithmTool = () => {
     let current = start.id;
     const path = [current];
     const traversalOrder = [current];
-    let nodesExpanded = 0;
+    let nodesExpanded = 1; // Count the start node
     const visited = new Set([current]);
 
     while (!goals.some(g => g.id === current)) {
-      nodesExpanded++;
       const neighbors = getNeighbors(current).filter(n => !visited.has(n));
-      
+
       if (neighbors.length === 0) break;
 
       let best = neighbors[0];
       let bestH = nodes.find(n => n.id === best).h;
-      
+
       for (const neighbor of neighbors) {
         const h = nodes.find(n => n.id === neighbor).h;
         if (h < bestH) {
@@ -692,12 +760,13 @@ const SearchAlgorithmTool = () => {
       visited.add(current);
       path.push(current);
       traversalOrder.push(current);
+      nodesExpanded++; // Count each node we move to
     }
 
     const success = goals.some(g => g.id === current);
     const cost = success ? calculatePathCost(path) : Infinity;
     const deadline = success ? checkDeadline(current, cost) : { status: 'missed', margin: Infinity, message: 'Stuck at local optimum' };
-    
+
     return {
       algorithm: 'Hill Climbing',
       path,
@@ -715,6 +784,7 @@ const SearchAlgorithmTool = () => {
     switch (selectedAlgorithm) {
       case 'bfs': result = bfs(); break;
       case 'dfs': result = dfs(); break;
+      case 'dls': result = dls(); break;
       case 'iddfs': result = iddfs(); break;
       case 'ucs': result = ucs(); break;
       case 'greedy': result = greedy(); break;
@@ -727,11 +797,12 @@ const SearchAlgorithmTool = () => {
   };
 
   const runAllAlgorithms = () => {
-    const algorithms = ['bfs', 'dfs', 'iddfs', 'ucs', 'greedy', 'astar', 'bidirectional', 'hillclimbing'];
+    const algorithms = ['bfs', 'dfs', 'dls', 'iddfs', 'ucs', 'greedy', 'astar', 'bidirectional', 'hillclimbing'];
     const allResults = algorithms.map(alg => {
       switch (alg) {
         case 'bfs': return bfs();
         case 'dfs': return dfs();
+        case 'dls': return dls();
         case 'iddfs': return iddfs();
         case 'ucs': return ucs();
         case 'greedy': return greedy();
@@ -966,6 +1037,7 @@ const SearchAlgorithmTool = () => {
                 <optgroup label="Uninformed Search">
                   <option value="bfs">Breadth-First Search (BFS)</option>
                   <option value="dfs">Depth-First Search (DFS)</option>
+                  <option value="dls">Depth-Limited Search (DLS)</option>
                   <option value="iddfs">Iterative Deepening DFS (IDDFS)</option>
                   <option value="ucs">Uniform Cost Search (UCS)</option>
                   <option value="bidirectional">Bidirectional Search</option>
@@ -976,6 +1048,22 @@ const SearchAlgorithmTool = () => {
                   <option value="hillclimbing">Hill Climbing</option>
                 </optgroup>
               </select>
+              {selectedAlgorithm === 'dls' && (
+                <div className="mt-3">
+                  <label className="block text-xs font-medium text-gray-600 mb-1">
+                    Depth Limit
+                  </label>
+                  <input
+                    type="number"
+                    min="1"
+                    max="10"
+                    value={depthLimit}
+                    onChange={(e) => setDepthLimit(parseInt(e.target.value) || 1)}
+                    className="w-full px-3 py-2 border border-blue-300 rounded-md bg-blue-50"
+                  />
+                  <p className="text-xs text-gray-500 mt-1">Max depth to search (1-10)</p>
+                </div>
+              )}
             </div>
 
             <div className="flex items-end gap-2">
@@ -1584,30 +1672,40 @@ const SearchAlgorithmTool = () => {
               <h2 className="text-xl font-semibold mb-4">📈 Performance Summary</h2>
               <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                 <div className="p-4 bg-blue-50 rounded border-2 border-blue-200">
-                  <p className="text-sm text-gray-600 mb-1">Fastest Algorithm</p>
+                  <p className="text-sm text-gray-600 mb-1">Fastest Algorithm(s)</p>
                   <p className="text-lg font-bold text-blue-700">
-                    {results.results
-                      .filter(r => r.success && r.deadlineStatus?.status === 'success')
-                      .sort((a, b) => a.cost - b.cost)[0]?.algorithm || 'None'}
+                    {(() => {
+                      const successful = results.results.filter(r => r.success && r.deadlineStatus?.status === 'success');
+                      if (successful.length === 0) return 'None';
+                      const minCost = Math.min(...successful.map(r => r.cost));
+                      const fastest = successful.filter(r => r.cost === minCost);
+                      return fastest.map(r => r.algorithm).join(', ');
+                    })()}
                   </p>
                   <p className="text-xs text-gray-500">
-                    {results.results
-                      .filter(r => r.success && r.deadlineStatus?.status === 'success')
-                      .sort((a, b) => a.cost - b.cost)[0]?.cost || '∞'} min
+                    {(() => {
+                      const successful = results.results.filter(r => r.success && r.deadlineStatus?.status === 'success');
+                      return successful.length > 0 ? `${Math.min(...successful.map(r => r.cost))} min` : '∞ min';
+                    })()}
                   </p>
                 </div>
-                
+
                 <div className="p-4 bg-green-50 rounded border-2 border-green-200">
                   <p className="text-sm text-gray-600 mb-1">Most Efficient</p>
                   <p className="text-lg font-bold text-green-700">
-                    {results.results
-                      .filter(r => r.success)
-                      .sort((a, b) => a.nodesExpanded - b.nodesExpanded)[0]?.algorithm || 'None'}
+                    {(() => {
+                      const successful = results.results.filter(r => r.success);
+                      if (successful.length === 0) return 'None';
+                      const minNodes = Math.min(...successful.map(r => r.nodesExpanded));
+                      const efficient = successful.filter(r => r.nodesExpanded === minNodes);
+                      return efficient.map(r => r.algorithm).join(', ');
+                    })()}
                   </p>
                   <p className="text-xs text-gray-500">
-                    {results.results
-                      .filter(r => r.success)
-                      .sort((a, b) => a.nodesExpanded - b.nodesExpanded)[0]?.nodesExpanded || 0} nodes
+                    {(() => {
+                      const successful = results.results.filter(r => r.success);
+                      return successful.length > 0 ? `${Math.min(...successful.map(r => r.nodesExpanded))} nodes` : '0 nodes';
+                    })()}
                   </p>
                 </div>
 
@@ -1622,15 +1720,24 @@ const SearchAlgorithmTool = () => {
                 </div>
 
                 <div className="p-4 bg-yellow-50 rounded border-2 border-yellow-200">
-                  <p className="text-sm text-gray-600 mb-1">Optimal Algorithms</p>
+                  <p className="text-sm text-gray-600 mb-1">Optimal Path Found By</p>
                   <p className="text-lg font-bold text-yellow-700">
-                    {results.results.filter(r => {
-                      const minCost = Math.min(...results.results.filter(res => res.success && res.deadlineStatus?.status === 'success').map(res => res.cost));
-                      return r.success && r.deadlineStatus?.status === 'success' && r.cost === minCost;
-                    }).length}
+                    {(() => {
+                      const successful = results.results.filter(r => r.success && r.deadlineStatus?.status === 'success');
+                      if (successful.length === 0) return 'None';
+                      const minCost = Math.min(...successful.map(r => r.cost));
+                      const optimal = successful.filter(r => r.cost === minCost);
+                      return optimal.map(r => r.algorithm).join(', ');
+                    })()}
                   </p>
                   <p className="text-xs text-gray-500">
-                    Found best solution
+                    {(() => {
+                      const successful = results.results.filter(r => r.success && r.deadlineStatus?.status === 'success');
+                      if (successful.length === 0) return 'No solution';
+                      const minCost = Math.min(...successful.map(r => r.cost));
+                      const count = successful.filter(r => r.cost === minCost).length;
+                      return `${count} algorithm${count > 1 ? 's' : ''}`;
+                    })()}
                   </p>
                 </div>
               </div>
