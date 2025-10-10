@@ -39,6 +39,15 @@ interface AlgorithmResult {
   deadlineStatus: DeadlineStatus;
   note?: string;
   compareAll?: false;
+  // New fields for comprehensive insights
+  openList?: number[];           // Frontier at termination (nodes waiting to be explored)
+  generatedNodes?: number;       // Total nodes generated (added to frontier)
+  maxFrontierSize?: number;      // Peak memory usage indicator
+  searchDepth?: number;          // Depth of solution path
+  fValues?: { [key: number]: number }; // For A*, Greedy - f(n) = g(n) + h(n)
+  gValues?: { [key: number]: number }; // Actual cost from start to node
+  hValues?: { [key: number]: number }; // Heuristic estimate from node to goal
+  evaluationOrder?: { nodeId: number; g: number; h: number; f: number; action: string }[]; // Detailed step-by-step for informed search
 }
 
 interface ComparisonResults {
@@ -300,23 +309,38 @@ const SearchAlgorithmTool = () => {
   const bfs = (): AlgorithmResult => {
     const start = nodes.find(n => n.isStart);
     if (!start) return createFailureResult('BFS', [], 0, 'Start node not found');
-    
+
     const goals = nodes.filter(n => n.isGoal);
     const queue: number[][] = [[start.id]];
-    const visited = new Set<number>([start.id]);
-    const traversalOrder: number[] = [start.id];
+    const visited = new Set<number>();
+    const traversalOrder: number[] = [];
     let nodesExpanded = 0;
+    let generatedNodes = 1; // Start node is generated
+    let maxFrontierSize = 1;
 
     while (queue.length > 0) {
+      maxFrontierSize = Math.max(maxFrontierSize, queue.length);
+
       const path = queue.shift();
       if (!path) continue;
       const current = path[path.length - 1];
+
+      // Skip if already visited
+      if (visited.has(current)) continue;
+
+      // Mark as visited and expanded
+      visited.add(current);
+      traversalOrder.push(current);
       nodesExpanded++;
 
       if (goals.some(g => g.id === current)) {
         const goalNode = nodes.find(n => n.id === current);
         const cost = calculatePathCost(path);
         const deadline = checkDeadline(current, cost);
+
+        // Get open list (remaining nodes in queue)
+        const openList = queue.map(p => p[p.length - 1]).filter((val, idx, self) => self.indexOf(val) === idx);
+
         return {
           algorithm: 'BFS',
           path,
@@ -325,16 +349,23 @@ const SearchAlgorithmTool = () => {
           nodesExpanded,
           success: true,
           goalReached: goalNode?.name || `ID: ${current}`,
-          deadlineStatus: deadline
+          deadlineStatus: deadline,
+          openList,
+          generatedNodes,
+          maxFrontierSize,
+          searchDepth: path.length - 1
         };
       }
 
       const neighbors = getNeighbors(current);
       for (const neighbor of neighbors) {
         if (!visited.has(neighbor)) {
-          visited.add(neighbor);
-          traversalOrder.push(neighbor);
-          queue.push([...path, neighbor]);
+          // Check if already in queue
+          const alreadyInQueue = queue.some(p => p[p.length - 1] === neighbor);
+          if (!alreadyInQueue) {
+            queue.push([...path, neighbor]);
+            generatedNodes++;
+          }
         }
       }
     }
@@ -351,8 +382,12 @@ const SearchAlgorithmTool = () => {
     const visited = new Set<number>();
     const traversalOrder: number[] = [];
     let nodesExpanded = 0;
+    let generatedNodes = 1; // Start node is generated
+    let maxFrontierSize = 1;
 
     while (stack.length > 0) {
+      maxFrontierSize = Math.max(maxFrontierSize, stack.length);
+
       const path = stack.pop();
       if (!path) continue;
 
@@ -367,6 +402,10 @@ const SearchAlgorithmTool = () => {
         const goalNode = nodes.find(n => n.id === current);
         const cost = calculatePathCost(path);
         const deadline = checkDeadline(current, cost);
+
+        // Get open list (remaining nodes in stack)
+        const openList = stack.map(p => p[p.length - 1]).filter((val, idx, self) => self.indexOf(val) === idx);
+
         return {
           algorithm: 'DFS',
           path,
@@ -375,14 +414,22 @@ const SearchAlgorithmTool = () => {
           nodesExpanded,
           success: true,
           goalReached: goalNode?.name || `ID: ${current}`,
-          deadlineStatus: deadline
+          deadlineStatus: deadline,
+          openList,
+          generatedNodes,
+          maxFrontierSize,
+          searchDepth: path.length - 1
         };
       }
 
       const neighbors = getNeighbors(current).reverse();
       for (const neighbor of neighbors) {
         if (!visited.has(neighbor)) {
-          stack.push([...path, neighbor]);
+          const alreadyInStack = stack.some(p => p[p.length - 1] === neighbor);
+          if (!alreadyInStack) {
+            stack.push([...path, neighbor]);
+            generatedNodes++;
+          }
         }
       }
     }
@@ -393,13 +440,16 @@ const SearchAlgorithmTool = () => {
   const dls = (): AlgorithmResult => {
     const start = nodes.find(n => n.isStart);
     if (!start) return createFailureResult('DLS', [], 0, 'Start node not found');
-    
+
     const goals = nodes.filter(n => n.isGoal);
     let nodesExpanded = 0;
+    let generatedNodes = 0;
+    let maxStackDepth = 0;
     const traversalOrder: number[] = [];
 
-    const dfsLimited = (path: number[], depth: number, visited: Set<number>): number[] | null => {
+    const dfsLimited = (path: number[], depth: number, visited: Set<number>, currentStackDepth: number): number[] | null => {
       const current = path[path.length - 1];
+      maxStackDepth = Math.max(maxStackDepth, currentStackDepth);
       nodesExpanded++;
       if (!traversalOrder.includes(current)) traversalOrder.push(current);
 
@@ -412,9 +462,10 @@ const SearchAlgorithmTool = () => {
       const neighbors = getNeighbors(current);
       for (const neighbor of neighbors) {
         if (!visited.has(neighbor)) {
+          generatedNodes++;
           const newVisited = new Set(visited);
           newVisited.add(neighbor);
-          const result = dfsLimited([...path, neighbor], depth - 1, newVisited);
+          const result = dfsLimited([...path, neighbor], depth - 1, newVisited, currentStackDepth + 1);
           if (result) return result;
         }
       }
@@ -422,7 +473,8 @@ const SearchAlgorithmTool = () => {
     };
 
     const visited = new Set([start.id]);
-    const resultPath = dfsLimited([start.id], depthLimit, visited);
+    generatedNodes = 1;
+    const resultPath = dfsLimited([start.id], depthLimit, visited, 1);
 
     if (resultPath) {
       const goalId = resultPath[resultPath.length - 1];
@@ -438,7 +490,10 @@ const SearchAlgorithmTool = () => {
         success: true,
         goalReached: goalNode?.name || `ID: ${goalId}`,
         deadlineStatus: deadline,
-        note: `Depth limit: ${depthLimit}`
+        note: `Depth limit: ${depthLimit}`,
+        searchDepth: resultPath.length - 1,
+        generatedNodes,
+        maxFrontierSize: maxStackDepth  // In recursive DFS, "frontier" = call stack depth
       };
     }
 
@@ -454,10 +509,13 @@ const SearchAlgorithmTool = () => {
 
     const goals = nodes.filter(n => n.isGoal);
     let totalNodesExpanded = 0;
+    let totalGeneratedNodes = 0;
+    let maxStackDepth = 0;
     const traversalOrder: number[] = [];
 
-    const dfsLimited = (path: number[], depth: number, visited: Set<number>): number[] | null => {
+    const dfsLimited = (path: number[], depth: number, visited: Set<number>, currentStackDepth: number): number[] | null => {
       const current = path[path.length - 1];
+      maxStackDepth = Math.max(maxStackDepth, currentStackDepth);
       totalNodesExpanded++;
       if (!traversalOrder.includes(current)) traversalOrder.push(current);
 
@@ -470,9 +528,10 @@ const SearchAlgorithmTool = () => {
       const neighbors = getNeighbors(current);
       for (const neighbor of neighbors) {
         if (!visited.has(neighbor)) {
+          totalGeneratedNodes++;
           const newVisited = new Set(visited);
           newVisited.add(neighbor);
-          const result = dfsLimited([...path, neighbor], depth - 1, newVisited);
+          const result = dfsLimited([...path, neighbor], depth - 1, newVisited, currentStackDepth + 1);
           if (result) return result;
         }
       }
@@ -481,7 +540,8 @@ const SearchAlgorithmTool = () => {
 
     for (let depth = 0; depth <= nodes.length; depth++) {
       const visited = new Set([start.id]);
-      const resultPath = dfsLimited([start.id], depth, visited);
+      totalGeneratedNodes++;  // Count start node in each iteration
+      const resultPath = dfsLimited([start.id], depth, visited, 1);
       if (resultPath) {
         const goalId = resultPath[resultPath.length - 1];
         const goalNode = nodes.find(n => n.id === goalId);
@@ -495,7 +555,10 @@ const SearchAlgorithmTool = () => {
           nodesExpanded: totalNodesExpanded,
           success: true,
           goalReached: goalNode?.name || `ID: ${goalId}`,
-          deadlineStatus: deadline
+          deadlineStatus: deadline,
+          searchDepth: resultPath.length - 1,
+          generatedNodes: totalGeneratedNodes,
+          maxFrontierSize: maxStackDepth  // Max call stack depth across all iterations
         };
       }
     }
@@ -511,14 +574,18 @@ const SearchAlgorithmTool = () => {
     const pq: { path: number[], cost: number }[] = [{ path: [start.id], cost: 0 }];
     const visited = new Set<number>();
     const traversalOrder: number[] = [];
+    const gValues: { [key: number]: number } = { [start.id]: 0 };
     let nodesExpanded = 0;
+    let generatedNodes = 1;
+    let maxFrontierSize = 1;
 
     while (pq.length > 0) {
+      maxFrontierSize = Math.max(maxFrontierSize, pq.length);
       pq.sort((a, b) => a.cost - b.cost);
       const dequeued = pq.shift();
       if (!dequeued) continue;
       const { path, cost } = dequeued;
-      
+
       const current = path[path.length - 1];
 
       if (visited.has(current)) continue;
@@ -530,6 +597,10 @@ const SearchAlgorithmTool = () => {
         const goalNode = nodes.find(n => n.id === current);
         const finalCost = Math.round(cost * 10) / 10;
         const deadline = checkDeadline(current, finalCost);
+
+        // Get open list
+        const openList = pq.map(p => p.path[p.path.length - 1]).filter((val, idx, self) => self.indexOf(val) === idx);
+
         return {
           algorithm: 'UCS',
           path,
@@ -538,7 +609,12 @@ const SearchAlgorithmTool = () => {
           nodesExpanded,
           success: true,
           goalReached: goalNode?.name || `ID: ${current}`,
-          deadlineStatus: deadline
+          deadlineStatus: deadline,
+          openList,
+          generatedNodes,
+          maxFrontierSize,
+          searchDepth: path.length - 1,
+          gValues
         };
       }
 
@@ -547,7 +623,13 @@ const SearchAlgorithmTool = () => {
         if (!visited.has(neighbor)) {
           const edgeCost = getEdgeCost(current, neighbor);
           if (edgeCost !== Infinity) {
-            pq.push({ path: [...path, neighbor], cost: cost + edgeCost });
+            const newCost = cost + edgeCost;
+            const alreadyInPQ = pq.some(p => p.path[p.path.length - 1] === neighbor);
+            if (!alreadyInPQ || newCost < (gValues[neighbor] || Infinity)) {
+              pq.push({ path: [...path, neighbor], cost: newCost });
+              gValues[neighbor] = newCost;
+              if (!alreadyInPQ) generatedNodes++;
+            }
           }
         }
       }
@@ -564,9 +646,13 @@ const SearchAlgorithmTool = () => {
     const pq: { path: number[], h: number }[] = [{ path: [start.id], h: start.h }];
     const visited = new Set<number>();
     const traversalOrder: number[] = [];
+    const hValues: { [key: number]: number } = { [start.id]: start.h };
     let nodesExpanded = 0;
+    let generatedNodes = 1;
+    let maxFrontierSize = 1;
 
     while (pq.length > 0) {
+      maxFrontierSize = Math.max(maxFrontierSize, pq.length);
       pq.sort((a, b) => a.h - b.h);
       const dequeued = pq.shift();
       if (!dequeued) continue;
@@ -583,6 +669,10 @@ const SearchAlgorithmTool = () => {
         const goalNode = nodes.find(n => n.id === current);
         const cost = calculatePathCost(path);
         const deadline = checkDeadline(current, cost);
+
+        // Get open list
+        const openList = pq.map(p => p.path[p.path.length - 1]).filter((val, idx, self) => self.indexOf(val) === idx);
+
         return {
           algorithm: 'Greedy',
           path,
@@ -591,7 +681,12 @@ const SearchAlgorithmTool = () => {
           nodesExpanded,
           success: true,
           goalReached: goalNode?.name || `ID: ${current}`,
-          deadlineStatus: deadline
+          deadlineStatus: deadline,
+          openList,
+          generatedNodes,
+          maxFrontierSize,
+          searchDepth: path.length - 1,
+          hValues
         };
       }
 
@@ -599,7 +694,12 @@ const SearchAlgorithmTool = () => {
       for (const neighbor of neighbors) {
         const node = nodes.find(n => n.id === neighbor);
         if (!visited.has(neighbor) && node) {
-          pq.push({ path: [...path, neighbor], h: node.h });
+          const alreadyInPQ = pq.some(p => p.path[p.path.length - 1] === neighbor);
+          if (!alreadyInPQ) {
+            pq.push({ path: [...path, neighbor], h: node.h });
+            hValues[neighbor] = node.h;
+            generatedNodes++;
+          }
         }
       }
     }
@@ -615,14 +715,21 @@ const SearchAlgorithmTool = () => {
     const pq: { path: number[], g: number, f: number }[] = [{ path: [start.id], g: 0, f: start.h }];
     const visited = new Set<number>();
     const traversalOrder: number[] = [];
+    const gValues: { [key: number]: number } = { [start.id]: 0 };
+    const hValues: { [key: number]: number } = { [start.id]: start.h };
+    const fValues: { [key: number]: number } = { [start.id]: start.h };
+    const evaluationOrder: { nodeId: number; g: number; h: number; f: number; action: string }[] = [];
     let nodesExpanded = 0;
+    let generatedNodes = 1;
+    let maxFrontierSize = 1;
 
     while (pq.length > 0) {
+      maxFrontierSize = Math.max(maxFrontierSize, pq.length);
       pq.sort((a, b) => a.f - b.f);
       const dequeued = pq.shift();
       if (!dequeued) continue;
-      const { path, g } = dequeued;
-      
+      const { path, g, f } = dequeued;
+
       const current = path[path.length - 1];
 
       if (visited.has(current)) continue;
@@ -630,10 +737,25 @@ const SearchAlgorithmTool = () => {
       traversalOrder.push(current);
       nodesExpanded++;
 
+      const currentNode = nodes.find(n => n.id === current);
+      if (currentNode) {
+        evaluationOrder.push({
+          nodeId: current,
+          g: Math.round(g * 10) / 10,
+          h: currentNode.h,
+          f: Math.round(f * 10) / 10,
+          action: 'expanded'
+        });
+      }
+
       if (goals.some(goal => goal.id === current)) {
         const goalNode = nodes.find(n => n.id === current);
         const finalCost = Math.round(g * 10) / 10;
         const deadline = checkDeadline(current, finalCost);
+
+        // Get open list
+        const openList = pq.map(p => p.path[p.path.length - 1]).filter((val, idx, self) => self.indexOf(val) === idx);
+
         return {
           algorithm: 'A*',
           path,
@@ -642,7 +764,15 @@ const SearchAlgorithmTool = () => {
           nodesExpanded,
           success: true,
           goalReached: goalNode?.name || `ID: ${current}`,
-          deadlineStatus: deadline
+          deadlineStatus: deadline,
+          openList,
+          generatedNodes,
+          maxFrontierSize,
+          searchDepth: path.length - 1,
+          gValues,
+          hValues,
+          fValues,
+          evaluationOrder
         };
       }
 
@@ -654,7 +784,26 @@ const SearchAlgorithmTool = () => {
             const node = nodes.find(n => n.id === neighbor);
             if (node) {
               const newG = g + edgeCost;
-              pq.push({ path: [...path, neighbor], g: newG, f: newG + node.h });
+              const newF = newG + node.h;
+              const alreadyInPQ = pq.some(p => p.path[p.path.length - 1] === neighbor);
+
+              if (!alreadyInPQ || newG < (gValues[neighbor] || Infinity)) {
+                pq.push({ path: [...path, neighbor], g: newG, f: newF });
+                gValues[neighbor] = newG;
+                hValues[neighbor] = node.h;
+                fValues[neighbor] = newF;
+
+                if (!alreadyInPQ) {
+                  generatedNodes++;
+                  evaluationOrder.push({
+                    nodeId: neighbor,
+                    g: Math.round(newG * 10) / 10,
+                    h: node.h,
+                    f: Math.round(newF * 10) / 10,
+                    action: 'generated'
+                  });
+                }
+              }
             }
           }
         }
@@ -707,7 +856,8 @@ const SearchAlgorithmTool = () => {
               nodesExpanded,
               success: true,
               goalReached: goal.name,
-              deadlineStatus: deadline
+              deadlineStatus: deadline,
+              searchDepth: fullPath.length - 1
             };
           }
         }
@@ -743,7 +893,8 @@ const SearchAlgorithmTool = () => {
               nodesExpanded,
               success: true,
               goalReached: goal.name,
-              deadlineStatus: deadline
+              deadlineStatus: deadline,
+              searchDepth: fullPath.length - 1
             };
           }
         }
@@ -771,12 +922,16 @@ const SearchAlgorithmTool = () => {
     let currentId = start.id;
     const path: number[] = [currentId];
     const traversalOrder: number[] = [currentId];
-    let nodesExpanded = 1; 
+    let nodesExpanded = 1;
+    let generatedNodes = 1;  // Start node
     const visited = new Set<number>([currentId]);
 
     while (!goals.some(g => g.id === currentId)) {
       const neighbors = getNeighbors(currentId).filter(n => !visited.has(n));
       if (neighbors.length === 0) break;
+
+      // Generate (evaluate) all neighbors
+      generatedNodes += neighbors.length;
 
       let bestNeighborId: number | null = null;
       let bestH = Infinity;
@@ -812,7 +967,10 @@ const SearchAlgorithmTool = () => {
       nodesExpanded,
       success,
       goalReached: goalNode ? goalNode.name : 'None',
-      deadlineStatus: deadline
+      deadlineStatus: deadline,
+      searchDepth: path.length - 1,
+      generatedNodes,
+      maxFrontierSize: 1  // Hill climbing only keeps 1 node (current) at a time - greedy!
     };
   };
 
@@ -1547,6 +1705,33 @@ const SearchAlgorithmTool = () => {
                 </div>
               </div>
 
+              {/* Additional Metrics - Generated Nodes, Max Frontier, Search Depth */}
+              {(results.generatedNodes !== undefined || results.maxFrontierSize !== undefined || results.searchDepth !== undefined) && (
+                <div className="grid grid-cols-3 gap-4 mb-6">
+                  {results.generatedNodes !== undefined && (
+                    <div className="p-4 bg-cyan-50 rounded">
+                      <p className="text-sm text-gray-600">Generated Nodes (Discovered)</p>
+                      <p className="text-xl font-bold text-cyan-700">{results.generatedNodes}</p>
+                      <p className="text-xs text-gray-500 mt-1">How many nodes found</p>
+                    </div>
+                  )}
+                  {results.maxFrontierSize !== undefined && (
+                    <div className="p-4 bg-orange-50 rounded">
+                      <p className="text-sm text-gray-600">Max Frontier (Memory Used)</p>
+                      <p className="text-xl font-bold text-orange-700">{results.maxFrontierSize}</p>
+                      <p className="text-xs text-gray-500 mt-1">Peak queue/stack size</p>
+                    </div>
+                  )}
+                  {results.searchDepth !== undefined && (
+                    <div className="p-4 bg-teal-50 rounded">
+                      <p className="text-sm text-gray-600">Search Depth</p>
+                      <p className="text-xl font-bold text-teal-700">{results.searchDepth}</p>
+                      <p className="text-xs text-gray-500 mt-1">Depth of solution</p>
+                    </div>
+                  )}
+                </div>
+              )}
+
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
                 <div className="p-4 bg-blue-50 rounded border-2 border-blue-200">
                   <h3 className="font-semibold text-gray-800 mb-2 flex items-center gap-2">
@@ -1561,13 +1746,61 @@ const SearchAlgorithmTool = () => {
                 <div className="p-4 bg-yellow-50 rounded border-2 border-yellow-200">
                   <h3 className="font-semibold text-gray-800 mb-2 flex items-center gap-2">
                     <div className="w-3 h-3 bg-yellow-500 rounded-full"></div>
-                    Exploration Order (Nodes Checked)
+                    Closed List (Traversal Order - Visited Nodes)
                   </h3>
                   <p className="text-lg font-mono font-bold text-yellow-800">
                     {results.traversal?.length > 0 ? results.traversal.map(id => nodes.find(n => n.id === id)?.name || id).join(' → ') : 'N/A'}
                   </p>
                 </div>
               </div>
+
+              {/* Open List Display */}
+              {results.openList && results.openList.length > 0 && (
+                <div className="p-4 bg-pink-50 rounded border-2 border-pink-200 mb-6">
+                  <h3 className="font-semibold text-gray-800 mb-2 flex items-center gap-2">
+                    <div className="w-3 h-3 bg-pink-500 rounded-full"></div>
+                    Open List (Frontier at Termination)
+                  </h3>
+                  <p className="text-lg font-mono font-bold text-pink-800">
+                    {results.openList.map(id => nodes.find(n => n.id === id)?.name || id).join(' → ')}
+                  </p>
+                </div>
+              )}
+
+              {/* f/g/h Values Table for Informed Search Algorithms */}
+              {(results.algorithm === 'A*' || results.algorithm === 'Greedy' || results.algorithm === 'UCS') && results.evaluationOrder && results.evaluationOrder.length > 0 && (
+                <div className="mb-6">
+                  <h3 className="text-lg font-semibold mb-3 text-gray-800">🔍 Node Evaluation Details</h3>
+                  <div className="overflow-x-auto">
+                    <table className="min-w-full bg-white border border-gray-300 rounded-lg overflow-hidden">
+                      <thead className="bg-indigo-100">
+                        <tr>
+                          <th className="px-4 py-2 text-left font-semibold text-gray-700">Node</th>
+                          <th className="px-4 py-2 text-left font-semibold text-gray-700">g(n)</th>
+                          <th className="px-4 py-2 text-left font-semibold text-gray-700">h(n)</th>
+                          <th className="px-4 py-2 text-left font-semibold text-gray-700">f(n)</th>
+                          <th className="px-4 py-2 text-left font-semibold text-gray-700">Action</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {results.evaluationOrder.map((item, idx) => (
+                          <tr key={idx} className={idx % 2 === 0 ? 'bg-gray-50' : 'bg-white'}>
+                            <td className="px-4 py-2 font-mono">{nodes.find(n => n.id === item.nodeId)?.name || item.nodeId}</td>
+                            <td className="px-4 py-2 text-blue-700 font-semibold">{item.g} min</td>
+                            <td className="px-4 py-2 text-purple-700 font-semibold">{item.h} min</td>
+                            <td className="px-4 py-2 text-green-700 font-semibold">{item.f} min</td>
+                            <td className="px-4 py-2">
+                              <span className={`px-2 py-1 rounded text-xs font-semibold ${item.action === 'expanded' ? 'bg-green-100 text-green-800' : 'bg-blue-100 text-blue-800'}`}>
+                                {item.action}
+                              </span>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
 
               {algorithmProperties[results.algorithm] && (
                 <div className="border-t-2 border-gray-200 pt-6">
@@ -1624,6 +1857,9 @@ const SearchAlgorithmTool = () => {
                       <th className="px-3 py-2 text-left font-semibold">Train Status</th>
                       <th className="px-3 py-2 text-left font-semibold">Margin</th>
                       <th className="px-3 py-2 text-left font-semibold">Nodes Exp.</th>
+                      <th className="px-3 py-2 text-left font-semibold">Generated (Found)</th>
+                      <th className="px-3 py-2 text-left font-semibold">Max Frontier (Memory)</th>
+                      <th className="px-3 py-2 text-left font-semibold">Depth</th>
                       <th className="px-3 py-2 text-left font-semibold">Optimal?</th>
                     </tr>
                   </thead>
@@ -1660,6 +1896,9 @@ const SearchAlgorithmTool = () => {
                             {result.deadlineStatus?.margin}
                           </td>
                           <td className="px-3 py-3">{result.nodesExpanded}</td>
+                          <td className="px-3 py-3 text-cyan-700">{result.generatedNodes ?? '-'}</td>
+                          <td className="px-3 py-3 text-orange-700">{result.maxFrontierSize ?? '-'}</td>
+                          <td className="px-3 py-3 text-teal-700">{result.searchDepth ?? '-'}</td>
                           <td className="px-3 py-3">
                             <span className={`px-2 py-1 rounded text-xs font-medium ${isOptimal ? 'bg-blue-100 text-blue-800' : 'bg-gray-100 text-gray-600'}`}>
                               {isOptimal ? '⭐ Yes' : 'No'}
@@ -1722,6 +1961,92 @@ const SearchAlgorithmTool = () => {
                 <p className="text-xs text-gray-600">
                   <strong>Legend:</strong> <strong>g(n)</strong> = actual path cost, <strong>h(n)</strong> = heuristic estimate, V = vertices (nodes), E = edges, b = branching factor, d = depth of solution, m = maximum depth, C* = optimal cost, ε = minimum edge cost
                 </p>
+              </div>
+            </div>
+
+            {/* New Detailed Search Metrics Table */}
+            <div className="bg-white rounded-lg shadow-md p-6 overflow-hidden">
+              <h2 className="text-xl font-semibold mb-4">🔍 Detailed Search Metrics (Open/Closed Lists)</h2>
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="bg-gray-100">
+                      <th className="px-3 py-2 text-left font-semibold">Algorithm</th>
+                      <th className="px-3 py-2 text-left font-semibold">Path Length</th>
+                      <th className="px-3 py-2 text-left font-semibold">Closed List (Traversal)</th>
+                      <th className="px-3 py-2 text-left font-semibold">Generated (Discovered)</th>
+                      <th className="px-3 py-2 text-left font-semibold">Max Frontier (Memory)</th>
+                      <th className="px-3 py-2 text-left font-semibold">Open at End (Remaining)</th>
+                      <th className="px-3 py-2 text-left font-semibold">Branching Factor</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {results.results.map((result, idx) => {
+                      const pathLength = result.path.length;
+                      const closedListSize = result.traversal.length;
+                      const generatedNodes = result.generatedNodes ?? '-';
+                      const maxFrontier = result.maxFrontierSize ?? '-';
+                      const openAtEnd = result.openList?.length ?? '-';
+
+                      // Calculate effective branching factor: b ≈ (Generated / Closed)
+                      const branchingFactor = result.generatedNodes && result.nodesExpanded > 0
+                        ? (result.generatedNodes / result.nodesExpanded).toFixed(2)
+                        : '-';
+
+                      return (
+                        <tr key={idx} className="border-b hover:bg-gray-50">
+                          <td className="px-3 py-3 font-medium">{result.algorithm}</td>
+                          <td className="px-3 py-3">
+                            <span className="font-semibold text-blue-700">{pathLength}</span>
+                            <span className="text-xs text-gray-500 ml-1">nodes</span>
+                          </td>
+                          <td className="px-3 py-3">
+                            <span className="font-semibold text-yellow-700">{closedListSize}</span>
+                            <span className="text-xs text-gray-500 ml-1">(expanded)</span>
+                          </td>
+                          <td className="px-3 py-3">
+                            <span className="font-semibold text-cyan-700">{generatedNodes}</span>
+                            <span className="text-xs text-gray-500 ml-1">{generatedNodes !== '-' ? '(to frontier)' : ''}</span>
+                          </td>
+                          <td className="px-3 py-3">
+                            <span className="font-semibold text-orange-700">{maxFrontier}</span>
+                            <span className="text-xs text-gray-500 ml-1">{maxFrontier !== '-' ? '(peak)' : ''}</span>
+                          </td>
+                          <td className="px-3 py-3">
+                            <span className="font-semibold text-pink-700">{openAtEnd}</span>
+                            <span className="text-xs text-gray-500 ml-1">{openAtEnd !== '-' ? '(remaining)' : ''}</span>
+                          </td>
+                          <td className="px-3 py-3">
+                            <span className="font-semibold text-purple-700">{branchingFactor}</span>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+              <div className="mt-4 p-4 bg-gradient-to-r from-blue-50 to-purple-50 rounded border border-blue-200">
+                <h4 className="font-semibold text-sm mb-2 text-gray-800">📖 Simple Explanations:</h4>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-xs text-gray-700">
+                  <div><strong>Path Length:</strong> How many stations in your route</div>
+                  <div><strong>Closed List (Traversal):</strong> All stations checked (visited)</div>
+                  <div><strong>Generated (Discovered):</strong> How many stations found during search</div>
+                  <div><strong>Max Frontier (Memory):</strong> Most stations remembered at once</div>
+                  <div><strong>Open at End (Remaining):</strong> Stations not checked yet when goal found</div>
+                  <div><strong>Branching Factor:</strong> Average neighbors per station</div>
+                </div>
+                <div className="mt-3 pt-3 border-t border-blue-300">
+                  <p className="text-xs text-gray-600">
+                    <strong>🔑 Key Terms:</strong>
+                  </p>
+                  <ul className="list-disc ml-5 mt-1 text-xs text-gray-600 space-y-1">
+                    <li><strong>Closed List (Traversal):</strong> Stations already explored/visited ✅</li>
+                    <li><strong>Open List (Frontier):</strong> Stations discovered but not visited yet 🔍</li>
+                    <li><strong>Generated:</strong> Total stations discovered (added to open list)</li>
+                    <li><strong>Max Frontier:</strong> Biggest queue/stack size (shows memory needed)</li>
+                    <li><strong>Path:</strong> Final route from start to goal 🎯</li>
+                  </ul>
+                </div>
               </div>
             </div>
 
@@ -1840,7 +2165,10 @@ const SearchAlgorithmTool = () => {
                     <li><strong>🎉 Train Caught:</strong> g(n) ≤ deadline (Green banner with celebration)</li>
                     <li><strong>😢 Train Missed:</strong> g(n) &gt; deadline (Red banner with sad message)</li>
                     <li><strong>Solution Path:</strong> The actual route Nimal should take</li>
-                    <li><strong>Exploration Order:</strong> All nodes the algorithm checked</li>
+                    <li><strong>Closed List (Traversal):</strong> All nodes already checked/visited ✅</li>
+                    <li><strong>Open List (Frontier):</strong> Nodes discovered but not checked yet 🔍</li>
+                    <li><strong>Generated (Discovered):</strong> Total nodes found during search</li>
+                    <li><strong>Max Frontier (Memory):</strong> Biggest queue/stack size (peak memory)</li>
                   </ul>
                 </div>
 
