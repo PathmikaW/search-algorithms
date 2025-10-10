@@ -1256,7 +1256,7 @@ const SearchAlgorithmTool = () => {
                 </optgroup>
                 <optgroup label="Informed Search">
                   <option value="greedy">Greedy Best-First</option>
-                  <option value="astar">A* Search ⭐</option>
+                  <option value="astar">A* Search</option>
                   <option value="hillclimbing">Hill Climbing</option>
                 </optgroup>
               </select>
