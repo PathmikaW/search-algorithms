@@ -6,13 +6,57 @@ An interactive web application to visualize and compare **9 different search alg
 
 ---
 
+## 🚀 Getting Started
+
+### 🌐 **Live Demo (Recommended)**
+
+**This tool is hosted on Vercel and ready to use!**
+
+**Live URL**: [https://search-algorithms-y5oo.vercel.app/](https://search-algorithms-y5oo.vercel.app/)
+
+👉 **Simply click the link above - no installation needed!**
+
+---
+
+### 💻 **Local Setup (If live demo is not working)**
+
+If the Vercel deployment is unavailable, you can run the tool locally:
+
+#### Prerequisites
+
+- Node.js (v16 or higher)
+- npm or yarn
+
+#### Installation
+
+```bash
+# Clone or navigate to the project directory
+cd search-algorithms-tool
+
+# Install dependencies
+npm install
+
+# Start development server
+npm run dev
+
+# Open in browser
+# The app will be available at http://localhost:3001
+```
+
+#### Build for Production
+
+```bash
+npm run build
+```
+
+---
+
 ## 📖 Table of Contents
 
 - [Overview](#overview)
 - [The Scenario](#the-scenario)
 - [Features](#features)
 - [Algorithms Implemented](#algorithms-implemented)
-- [Getting Started](#getting-started)
 - [How to Use](#how-to-use)
 - [Understanding the Results](#understanding-the-results)
 - [Configuration Options](#configuration-options)
@@ -38,12 +82,14 @@ This tool helps you understand how different AI search algorithms work by visual
 ## 🚉 The Scenario
 
 **Problem**: Nimal finishes a meeting in **Dehiwala** at 5:45 PM. He needs to catch the **6:10 PM train to Maho** from either:
+
 - **Fort Station** (25 minutes deadline)
 - **Maradana Station** (27 minutes deadline)
 
 **Challenge**: Find the fastest route during **evening rush hour traffic**!
 
 **Map**:
+
 ```
 Dehiwala (Start)
     ↓
@@ -58,16 +104,19 @@ Dehiwala (Start)
 ## ✨ Features
 
 ### 🔍 **Algorithm Visualization**
+
 - Watch algorithms explore the graph in real-time
 - See which nodes are visited (yellow) vs part of solution (green)
 - Track nodes expanded and path cost
 
 ### 📊 **Performance Comparison**
+
 - Compare all 9 algorithms at once
 - See which is fastest, most efficient, and optimal
 - Understand trade-offs between algorithms
 
 ### 🚦 **Traffic Simulation**
+
 - **5 time slots** with different traffic multipliers:
   - Off-Peak (×1.0)
   - Morning Rush (×1.8)
@@ -77,12 +126,14 @@ Dehiwala (Start)
 - **One-way restrictions** during peak hours
 
 ### 🎨 **Interactive Graph Editor**
+
 - Add/remove nodes and edges
 - Modify costs and heuristics
 - Set deadlines for goals
 - Import/export configurations
 
 ### 📈 **Detailed Analytics**
+
 - Path cost (travel time)
 - Nodes expanded (efficiency)
 - Success/failure with deadlines
@@ -93,105 +144,85 @@ Dehiwala (Start)
 ## 🧠 Algorithms Implemented
 
 ### **Uninformed Search** (No heuristic)
+
 1. **BFS (Breadth-First Search)**
+
    - Explores level by level
    - Optimal for unweighted graphs
    - Complete
-
 2. **DFS (Depth-First Search)**
+
    - Goes deep first, then backtracks
    - Not optimal
    - Uses less memory
-
 3. **DLS (Depth-Limited Search)** ⭐ NEW
+
    - DFS with depth limit
    - Configurable depth parameter
    - Complete only if solution within limit
-
 4. **IDDFS (Iterative Deepening DFS)**
+
    - Runs DLS with increasing depths
    - Combines BFS optimality with DFS memory efficiency
    - Complete and optimal
-
 5. **UCS (Uniform Cost Search)**
+
    - Always expands cheapest path
    - Guaranteed optimal
    - Uses edge costs
-
 6. **Bidirectional Search**
+
    - Searches from both start and goal
    - Meets in the middle
    - Very efficient
 
 ### **Informed Search** (Uses heuristic h(n))
+
 7. **Greedy Best-First**
+
    - Only considers heuristic
    - Fast but not optimal
    - Can get stuck
-
 8. **A\* Search** ⭐ RECOMMENDED
+
    - Balances actual cost g(n) and heuristic h(n)
    - Optimal with admissible heuristic
    - Most popular in practice
-
 9. **Hill Climbing**
+
    - Local greedy search
    - Very fast
    - Can get stuck at local maxima
 
 ---
 
-## 🚀 Getting Started
-
-### Prerequisites
-- Node.js (v16 or higher)
-- npm or yarn
-
-### Installation
-
-```bash
-# Clone or navigate to the project directory
-cd search-algorithms-tool
-
-# Install dependencies
-npm install
-
-# Start development server
-npm run dev
-
-# Open in browser
-# The app will be available at http://localhost:3001
-```
-
-### Build for Production
-
-```bash
-npm run build
-```
-
----
-
 ## 📖 How to Use
 
 ### Step 1: Select Algorithm
+
 Choose from the dropdown menu (9 algorithms available)
 
 ### Step 2: Configure (Optional)
+
 - **For DLS**: Set depth limit (1-10)
 - **Traffic**: Choose time slot
 - **One-way**: Enable/disable restrictions
 
 ### Step 3: Run
+
 Click **"Run Algorithm"** to see it in action
 
 ### Step 4: Analyze Results
+
 View:
+
 - ✅/❌ Train caught or missed
 - 🛤️ Solution path (route to follow)
 - 📊 Nodes expanded (efficiency)
 - ⏱️ Travel time and time margin
 
 ### Step 5: Compare
+
 Click **"Compare All Algorithms"** to see comprehensive comparison
 
 ---
@@ -218,6 +249,7 @@ Click **"Compare All Algorithms"** to see comprehensive comparison
 ### Graph Visualization
 
 **Node Colors**:
+
 - 🔵 **Blue** = Start node (Dehiwala)
 - 🔴 **Red** = Goal nodes (Fort/Maradana)
 - 🟢 **Green** = Solution path
@@ -225,10 +257,12 @@ Click **"Compare All Algorithms"** to see comprehensive comparison
 - ⚪ **Gray** = Not visited
 
 **Edge Labels**:
+
 - Numbers show actual travel time (base cost × traffic multiplier)
 - Dashed red lines = one-way restrictions
 
 **Node Information**:
+
 - **h=X** = Heuristic value (estimated time to goal)
 - **⏰Xmin** = Deadline (for goal nodes)
 
@@ -251,12 +285,14 @@ Weekend (11 AM - 2 PM)          ×1.25     Light traffic
 ```
 
 **Example**: Base edge cost of 5 min becomes:
+
 - Off-peak: 5 × 1.0 = **5 min**
 - Evening peak: 5 × 2.0 = **10 min** ⚠️
 
 ### One-Way Restrictions
 
 Enable **One-Way Traffic Restrictions** to simulate:
+
 - Peak hour traffic rules in Fort area
 - Certain routes become one-directional
 - Penalties for restricted directions
@@ -264,6 +300,7 @@ Enable **One-Way Traffic Restrictions** to simulate:
 ### DLS Depth Limit
 
 When **DLS (Depth-Limited Search)** is selected:
+
 - Input field appears to set depth limit
 - Range: 1-10 nodes
 - Default: 3 nodes
@@ -272,23 +309,27 @@ When **DLS (Depth-Limited Search)** is selected:
 ### Custom Graphs
 
 **Add Nodes**:
+
 1. Click **[+]** button (purple)
 2. Enter name, heuristic h(n), optional deadline
 3. Check "Is Goal" if it's a destination
 4. Node placed automatically (no overlaps)
 
 **Add Edges**:
+
 1. Click **[+]** button (indigo)
 2. Select "From" and "To" nodes
 3. Enter base cost (minutes)
 4. Check "One-Way" if needed
 
 **Manage Nodes/Edges**:
+
 - Click **"Node Manager"** or **"Edge Manager"** (collapsible sections)
 - Edit values inline
 - Delete with trash icon 🗑️
 
 **Import/Export**:
+
 - **Export** 💾: Save configuration as JSON
 - **Import** 📂: Load saved configuration
 
@@ -301,36 +342,41 @@ When **DLS (Depth-Limited Search)** is selected:
 When you click **"Compare All Algorithms"**, you'll see:
 
 #### 1️⃣ **Fastest Algorithm(s)**
+
 Shows which found the shortest path (lowest cost)
 
 #### 2️⃣ **Most Efficient**
+
 Shows which explored fewest nodes
 
 #### 3️⃣ **Success Rate**
+
 Percentage of algorithms that caught the train
 
 #### 4️⃣ **Optimal Path Found By**
+
 Lists all algorithms that found the best solution
 
 ### Detailed Comparison Table
 
 View all algorithms side-by-side:
 
-| Algorithm | Time | Deadline | Status | Nodes | Optimal? |
-|-----------|------|----------|--------|-------|----------|
-| BFS | 13 min | 27 min | ✅ Caught | 6 | ⭐ Yes |
-| DFS | 15 min | 27 min | ✅ Caught | 4 | No |
-| DLS | - | - | ❌ Missed | 2 | No |
-| IDDFS | 13 min | 27 min | ✅ Caught | 8 | ⭐ Yes |
-| UCS | 13 min | 27 min | ✅ Caught | 5 | ⭐ Yes |
-| Greedy | 13 min | 27 min | ✅ Caught | 3 | ⭐ Yes |
-| A* | 13 min | 27 min | ✅ Caught | 3 | ⭐ Yes |
-| Bidirect | - | - | ❌ Missed | 0 | No |
-| Hill Climb | 13 min | 27 min | ✅ Caught | 3 | ⭐ Yes |
+| Algorithm  | Time   | Deadline | Status    | Nodes | Optimal? |
+| ---------- | ------ | -------- | --------- | ----- | -------- |
+| BFS        | 13 min | 27 min   | ✅ Caught | 6     | ⭐ Yes   |
+| DFS        | 15 min | 27 min   | ✅ Caught | 4     | No       |
+| DLS        | -      | -        | ❌ Missed | 2     | No       |
+| IDDFS      | 13 min | 27 min   | ✅ Caught | 8     | ⭐ Yes   |
+| UCS        | 13 min | 27 min   | ✅ Caught | 5     | ⭐ Yes   |
+| Greedy     | 13 min | 27 min   | ✅ Caught | 3     | ⭐ Yes   |
+| A*         | 13 min | 27 min   | ✅ Caught | 3     | ⭐ Yes   |
+| Bidirect   | -      | -        | ❌ Missed | 0     | No       |
+| Hill Climb | 13 min | 27 min   | ✅ Caught | 3     | ⭐ Yes   |
 
 ### Algorithm Complexity
 
 Each result shows:
+
 - ⏱️ **Time Complexity**: Worst-case running time
 - 💾 **Space Complexity**: Memory usage
 - ✅ **Complete**: Will always find solution if exists?
@@ -338,6 +384,7 @@ Each result shows:
 - 📝 **Description**: Key characteristics
 
 **Example for A***:
+
 ```
 Time Complexity:  O(b^d)
 Space Complexity: O(b^d)
@@ -356,21 +403,25 @@ Where: g(n) = actual path cost, h(n) = heuristic estimate,
 ### Key Concepts
 
 **g(n) - Actual Cost**:
+
 - Real travel time from start to node n
 - Calculated by summing edge costs along the path
 - Example: Dehiwala → Borella → Maradana = 5 + 8 = 13 min
 
 **h(n) - Heuristic**:
+
 - *Estimated* time from node n to nearest goal
 - Pre-defined for each node
 - Should be admissible (never overestimate) for A* optimality
 - Example: Borella has h=3 (estimated 3 min to Maradana)
 
 **f(n) - Total Estimated Cost**:
+
 - Used by A*: f(n) = g(n) + h(n)
 - Example: At Borella: f = 5 (actual so far) + 3 (estimate remaining) = 8
 
 **Nodes Expanded**:
+
 - Number of nodes the algorithm "looked at"
 - Lower = more efficient
 - Example: A* expanded 3 nodes (Dehiwala, Borella, Maradana)
@@ -378,44 +429,52 @@ Where: g(n) = actual path cost, h(n) = heuristic estimate,
 ### Algorithm Selection Guide
 
 **Choose A*** if:
+
 - ✅ You need optimal solution
 - ✅ You have good heuristic
 - ✅ Efficiency matters
 - 🏆 **Best all-around choice**
 
 **Choose UCS** if:
+
 - ✅ You need optimal solution
 - ✅ No heuristic available
 - ✅ Edge costs vary significantly
 
 **Choose Greedy** if:
+
 - ✅ Speed is critical
 - ✅ Near-optimal is acceptable
 - ⚠️ Risk: might not find optimal
 
 **Choose BFS** if:
+
 - ✅ Unweighted graph (all edges same cost)
 - ✅ Need optimal solution
 - ✅ No heuristic available
 
 **Choose IDDFS** if:
+
 - ✅ Unweighted graph
 - ✅ Memory constrained
 - ✅ Need optimal solution
 
 **Avoid DFS** if:
+
 - ❌ You need optimal solution
 - ❌ You need guarantees
 
 ### Implementation Details
 
 **Built with**:
+
 - React 18
 - Tailwind CSS
 - Lucide React Icons
 - Vite
 
 **Files**:
+
 ```
 search-algorithms-tool/
 ├── src/
@@ -423,7 +482,9 @@ search-algorithms-tool/
 │   ├── index.css            # Tailwind styles
 │   └── main.tsx             # Entry point
 ├── public/
-├── performanceSummaryExplanation.md   # Detailed performance guide
+├── PERFORMANCE_SUMMARY_EXPLANATION.md   # Detailed performance guide
+├── COMPARISON_ONE_WAY_ENABLED.md        # Results with one-way ON
+├── COMPARISON_ONE_WAY_DISABLED.md       # Results with one-way OFF
 ├── README.md                # This file
 ├── package.json
 └── vite.config.js
@@ -431,6 +492,7 @@ search-algorithms-tool/
 
 **Algorithms Location**:
 All 9 algorithms are implemented in `src/App.tsx`:
+
 - Lines 236-284: BFS
 - Lines 286-336: DFS
 - Lines 338-397: DLS (NEW)
@@ -475,6 +537,7 @@ All 9 algorithms are implemented in `src/App.tsx`:
 ### For Students
 
 **This tool helps you**:
+
 - ✅ Visualize abstract algorithms
 - ✅ Understand g(n), h(n), f(n)
 - ✅ Compare performance empirically
@@ -482,15 +545,18 @@ All 9 algorithms are implemented in `src/App.tsx`:
 - ✅ Prepare for exams/assignments
 
 **Study Tips**:
+
 1. Run each algorithm individually first
 2. Predict which will be fastest/optimal
 3. Compare predictions with actual results
-4. Read `performanceSummaryExplanation.md` for deep dive
-5. Try creating your own scenarios
+4. Read `PERFORMANCE_SUMMARY_EXPLANATION.md` for deep dive
+5. Compare `COMPARISON_ONE_WAY_ENABLED.md` vs `COMPARISON_ONE_WAY_DISABLED.md`
+6. Try creating your own scenarios
 
 ### For Educators
 
 **Teaching Benefits**:
+
 - 📊 Live demonstrations in class
 - 🎯 Concrete real-world examples
 - 🔄 Interactive experiments
@@ -498,6 +564,7 @@ All 9 algorithms are implemented in `src/App.tsx`:
 - 🎨 Visual learning support
 
 **Lesson Ideas**:
+
 1. "Which algorithm would you use?" discussions
 2. Competitive prediction games
 3. Graph design challenges
@@ -509,19 +576,23 @@ All 9 algorithms are implemented in `src/App.tsx`:
 ## 🐛 Troubleshooting
 
 **DLS always fails?**
+
 - Increase depth limit to 3 or higher
 - Check if solution path is deeper than limit
 
 **Bidirectional search fails?**
+
 - Works best with single goal
 - Check graph connectivity
 
 **Strange results?**
+
 - Refresh page
 - Re-import graph configuration
 - Check for negative edge costs
 
 **Performance slow?**
+
 - Large graphs may take time
 - Use "Run Algorithm" instead of "Compare All"
 - Reduce number of nodes/edges
@@ -531,6 +602,7 @@ All 9 algorithms are implemented in `src/App.tsx`:
 ## 📝 Version History
 
 ### v2.0 (Current)
+
 - ✨ Added DLS (Depth-Limited Search)
 - ✨ Depth limit configuration UI
 - 🐛 Fixed Hill Climbing node counting
@@ -538,6 +610,7 @@ All 9 algorithms are implemented in `src/App.tsx`:
 - 📚 Added comprehensive documentation
 
 ### v1.0
+
 - Initial release with 8 algorithms
 - Traffic simulation
 - Graph editor
@@ -548,6 +621,7 @@ All 9 algorithms are implemented in `src/App.tsx`:
 ## 🤝 Contributing
 
 Feel free to:
+
 - Report bugs
 - Suggest features
 - Improve documentation
@@ -579,10 +653,13 @@ Created as part of IT5431 - Essentials of Artificial Intelligence coursework.
 ## 📞 Support
 
 **Questions?** Check:
+
 1. This README
-2. `performanceSummaryExplanation.md` for detailed metrics explanation
-3. Hover tooltips in the app
-4. Algorithm Properties section for complexity info
+2. `PERFORMANCE_SUMMARY_EXPLANATION.md` for detailed metrics explanation
+3. `COMPARISON_ONE_WAY_ENABLED.md` for results with one-way traffic
+4. `COMPARISON_ONE_WAY_DISABLED.md` for results without one-way traffic
+5. Hover tooltips in the app
+6. Algorithm Properties section for complexity info
 
 ---
 
