@@ -83,10 +83,30 @@ This tool helps you understand how different AI search algorithms work by visual
 
 **Problem**: Nimal finishes a meeting in **Dehiwala** at 5:45 PM. He needs to catch the **6:10 PM train to Maho** from either:
 
-- **Fort Station** (25 minutes deadline)
-- **Maradana Station** (27 minutes deadline)
+- **Fort Station** (25 minutes deadline) - Departure point, seats available
+- **Maradana Station** (27 minutes deadline) - En-route stop, standing only
 
-**Challenge**: Find the fastest route during **evening rush hour traffic**!
+**Challenge**: Find the best route during **evening rush hour traffic**!
+
+**Decision Logic**:
+- **If a seat is REQUIRED** → Go to **Fort Station** (Feasible under current conditions: 20-24 min drive)
+  - **Algorithm pick**: Use BFS or IDDFS over DFS for a safer buffer
+  - **BFS**: 20 min, +5 min margin, caught ✅
+  - **IDDFS**: 20 min, +5 min margin, caught ✅
+  - **DFS**: 24 min, +1 min margin, caught (tight → use only if needed) ⚠️
+
+- **If on-time certainty is the PRIORITY** (standing OK) → Go to **Maradana Station**
+  - **Fastest & safest**: 13 min drive, +14 min margin, caught ✅
+  - **Algorithm pick**: A* (optimal + efficient) → or UCS (optimal), Greedy/Hill Climbing (fast, no guarantee)
+  - **A***: 13 min, +14, caught ✅
+  - **UCS**: 13 min, +14, caught ✅
+  - **Greedy**: 13 min, +14, caught ✅
+  - **Hill Climbing**: 13 min, +14, caught ✅
+  - **DLS (backup)**: 17 min, +10, caught ✅
+
+**Summary**:
+- **Seat-first**: Fort via BFS/IDDFS (DFS only if necessary)
+- **Time-first**: Maradana via A* (or UCS); Greedy/Hill Climbing are acceptable here because all converge to the same best path
 
 **Map**:
 

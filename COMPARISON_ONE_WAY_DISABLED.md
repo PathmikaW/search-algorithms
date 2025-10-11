@@ -4,103 +4,146 @@
 **Traffic Multiplier**: ×2.0
 **One-Way Restrictions**: ❌ DISABLED
 
+**Context**: Nimal finished a client meeting in **Dehiwala** and must catch the **6:10 PM train to Maho** from either **Fort Station** or **Maradana Station**. If he **wants to catch a seat**, he will have to go to Fort Station (departure point); otherwise, he can catch the train from Maradana (en-route stop, standing only).
+
+**Goal**: Catch the Maho train after a 5:45 PM finish in Dehiwala
+**Trains**: Fort 6:10 PM (25-min deadline) | Maradana 6:12 PM (27-min deadline)
+
+**🟡 Priority: If a seat is REQUIRED → Go to Fort Station**
+
 ---
 
 ## 📊 Performance Summary
 
-| Algorithm | Status | Path Cost | Nodes Expanded | Destination | Optimal | Time Margin |
-|-----------|--------|-----------|----------------|-------------|---------|-------------|
-| **BFS** | ✅ Caught | 11 min | 8 nodes | Fort | ⭐ Yes | +14 min |
-| **DFS** | ✅ Caught | 15 min | 5 nodes | Maradana | No | +12 min |
-| **DLS** | ❌ Missed | - | 3 nodes | - | No | - |
-| **IDDFS** | ✅ Caught | 11 min | 12 nodes | Fort | ⭐ Yes | +14 min |
-| **UCS** | ✅ Caught | 11 min | 7 nodes | Fort | ⭐ Yes | +14 min |
-| **Greedy** | ✅ Caught | 11 min | 4 nodes | Fort | ⭐ Yes | +14 min |
-| **A*** | ✅ Caught | 11 min | 4 nodes | Fort | ⭐ Yes | +14 min |
-| **Bidirectional** | ❌ Missed | - | 0 nodes | - | No | - |
-| **Hill Climbing** | ✅ Caught | 11 min | 4 nodes | Fort | ⭐ Yes | +14 min |
+| Algorithm | Status | Path Cost | Nodes Expanded | Generated (Found) | Max Frontier (Memory) | Depth | Destination | Time Margin |
+|-----------|--------|-----------|----------------|-------------------|-----------------------|-------|-------------|-------------|
+| **BFS** | ✅ Caught | 20 min | 7 | 8 | 4 | 2 | Fort Station | +5 min |
+| **DFS** | ✅ Caught | 24 min | 5 | 7 | 4 | 3 | Fort Station | +1 min |
+| **DLS** | ✅ Caught | 17 min | 8 | 8 | 4 | 3 | Maradana Station | +10 min |
+| **IDDFS** | ✅ Caught | 20 min | 17 | 17 | 3 | 2 | Fort Station | +5 min |
+| **UCS** | ✅ Caught | 13 min | 7 | 8 | 4 | 2 | Maradana Station | +14 min |
+| **Greedy** | ✅ Caught | 13 min | 3 | 6 | 4 | 2 | Maradana Station | +14 min |
+| **A*** | ✅ Caught | 13 min | 3 | 6 | 4 | 2 | Maradana Station | +14 min |
+| **Bidirectional** | ❌ Missed | ∞ | 0 | - | - | - | None | -Infinity |
+| **Hill Climbing** | ✅ Caught | 13 min | 3 | 8 | 1 | 2 | Maradana Station | +14 min |
 
 ---
 
 ## 🏆 Key Insights
 
-### ✅ **Success Rate**: 77.8% (7 out of 9 algorithms)
+### ✅ **Success Rate**: 88.9% (8 out of 9 algorithms)
 
-### 🥇 **Fastest Path**: 11 minutes ⚡
-**Found by**: BFS, IDDFS, UCS, Greedy, A*, Hill Climbing
+### 🥇 **Fastest Path** (All successful algorithms): 13 minutes ⚡
+**Found by**: UCS, Greedy, A*, Hill Climbing (all to Maradana)
 
-### ⚡ **Most Efficient**: 4 nodes expanded
+### 🎯 **Fort Station Routes** (Seat Priority): 20-24 minutes
+**Found by**: BFS (20 min, +5 margin), IDDFS (20 min, +5 margin), DFS (24 min, +1 margin - tight!)
+
+### ⚡ **Most Efficient**: 3 nodes expanded
 **Achieved by**: Greedy, A*, Hill Climbing
 
 ### ❌ **Failed Algorithms**:
-- **DLS**: Failed due to depth limit (default: 3 nodes) - solution path requires 4 nodes
 - **Bidirectional**: Does not work well with multi-goal scenarios
+
+### 💡 **Decision Making**:
+- **For SEAT** (Fort Station): Use BFS or IDDFS for safer buffer (20 min, +5 margin). DFS works but risky (24 min, +1 margin).
+- **For TIME** (Maradana Station): Use A*/UCS (optimal) or Greedy/Hill Climbing (fast). All find 13 min path with +14 margin.
 
 ---
 
-## 🛤️ Optimal Path (11 minutes)
+## 🛤️ Optimal Paths
+
+### **For SEAT (Fort Station)** - 20 minutes (Feasible)
+
+**Best Algorithms**: BFS, IDDFS
 
 ```
 Dehiwala (Start)
-    ↓ (5 min)
-Borella
-    ↓ (2 min)
-Union Place
-    ↓ (4 min)
+    ↓
+Wellawatte
+    ↓
+Bambalapitiya
+    ↓
+Kollupitiya
+    ↓
 Fort Station (Goal) ✅
 ```
 
-**Total**: 5 + 2 + 4 = **11 minutes**
+**Total**: **20 minutes**
 **Deadline**: 25 minutes (Fort)
-**Arrived**: 14 minutes early ✅
+**Margin**: +5 minutes ✅ (Safer buffer)
+
+**Alternative (DFS)**: 24 minutes, +1 margin (tight, use only if needed) ⚠️
+
+### **For TIME (Maradana Station)** - 13 minutes (Fastest & Safest)
+
+**Best Algorithms**: A*, UCS, Greedy, Hill Climbing
+
+```
+Dehiwala (Start)
+    ↓
+Borella
+    ↓
+Maradana Station (Goal) ✅
+```
+
+**Total**: **13 minutes**
+**Deadline**: 27 minutes (Maradana)
+**Margin**: +14 minutes ✅ (Excellent safety margin!)
 
 ---
 
 ## 📈 Algorithm Analysis
 
 ### **BFS (Breadth-First Search)**
-- ✅ **Found optimal path**: 11 min
-- 🔍 **Nodes expanded**: 8
-- 📝 **Notes**: Explores all nodes level-by-level, guarantees shortest path
-- ⏱️ **Efficiency**: Moderate (expands more nodes than informed search)
+- ✅ **Found path to Fort**: 20 min, +5 margin
+- 🔍 **Nodes expanded**: 7 | Generated: 8 | Max Frontier: 4 | Depth: 2
+- 📝 **Notes**: Explores level-by-level, found Fort Station route
+- 🎯 **Use case**: **Good for SEAT priority** - safe +5 min buffer
+- ⏱️ **Efficiency**: Moderate
 
 ### **DFS (Depth-First Search)**
-- ✅ **Found path**: 15 min (sub-optimal)
-- 🔍 **Nodes expanded**: 5
-- 📝 **Notes**: Found longer route via Maradana instead of Fort
-- ⏱️ **Efficiency**: Not optimal, but memory efficient
+- ✅ **Found path to Fort**: 24 min, +1 margin ⚠️
+- 🔍 **Nodes expanded**: 5 | Generated: 7 | Max Frontier: 4 | Depth: 3
+- 📝 **Notes**: Found Fort route but with very tight margin
+- 🎯 **Use case**: **Only if needed for SEAT** - risky +1 min buffer
+- ⏱️ **Efficiency**: Memory efficient but not optimal, tight deadline
 
 ### **DLS (Depth-Limited Search)**
-- ❌ **Failed**: Could not find solution within depth limit
-- 🔍 **Nodes expanded**: 3
-- 📝 **Notes**: Depth limit of 3 is insufficient (optimal path needs 4 nodes)
-- 💡 **Fix**: Increase depth limit to 4 or higher
+- ✅ **Found path to Maradana**: 17 min, +10 margin
+- 🔍 **Nodes expanded**: 8 | Generated: 8 | Max Frontier: 4 | Depth: 3
+- 📝 **Notes**: With depth limit of 3, found Maradana route
+- 🎯 **Use case**: **Backup option** for time priority
+- ⏱️ **Efficiency**: Reasonable, depends on depth limit setting
 
 ### **IDDFS (Iterative Deepening DFS)**
-- ✅ **Found optimal path**: 11 min
-- 🔍 **Nodes expanded**: 12
-- 📝 **Notes**: Iteratively searches with increasing depths until solution found
-- ⏱️ **Efficiency**: Expands most nodes due to repeated searches, but guarantees optimality
+- ✅ **Found path to Fort**: 20 min, +5 margin
+- 🔍 **Nodes expanded**: 17 | Generated: 17 | Max Frontier: 3 | Depth: 2
+- 📝 **Notes**: Iteratively searches with increasing depths
+- 🎯 **Use case**: **Good for SEAT priority** - safe +5 min buffer
+- ⏱️ **Efficiency**: Expands most nodes but low memory, guarantees optimality
 
 ### **UCS (Uniform Cost Search)**
-- ✅ **Found optimal path**: 11 min
-- 🔍 **Nodes expanded**: 7
-- 📝 **Notes**: Expands nodes in order of path cost, always optimal
-- ⏱️ **Efficiency**: Good - balances optimality with reasonable node expansion
+- ✅ **Found path to Maradana**: 13 min, +14 margin ⚡
+- 🔍 **Nodes expanded**: 7 | Generated: 8 | Max Frontier: 4 | Depth: 2
+- 📝 **Notes**: Expands nodes by path cost, always optimal
+- 🎯 **Use case**: **Excellent for TIME priority** - guaranteed optimal
+- ⏱️ **Efficiency**: Very good - balances optimality with efficiency
 
 ### **Greedy Best-First Search**
-- ✅ **Found optimal path**: 11 min
-- 🔍 **Nodes expanded**: 4 ⚡
-- 📝 **Notes**: Uses heuristic to guide search directly to goal
+- ✅ **Found path to Maradana**: 13 min, +14 margin ⚡
+- 🔍 **Nodes expanded**: 3 | Generated: 6 | Max Frontier: 4 | Depth: 2
+- 📝 **Notes**: Uses heuristic to guide search directly
+- 🎯 **Use case**: **Fast for TIME priority** - but no guarantee (worked here)
 - ⏱️ **Efficiency**: Excellent (tied for most efficient)
-- 🎯 **Lucky**: Heuristic led to optimal path this time
 
 ### **A* Search**
-- ✅ **Found optimal path**: 11 min
-- 🔍 **Nodes expanded**: 4 ⚡
+- ✅ **Found path to Maradana**: 13 min, +14 margin ⚡
+- 🔍 **Nodes expanded**: 3 | Generated: 6 | Max Frontier: 4 | Depth: 2
 - 📝 **Notes**: Perfect balance of actual cost g(n) and heuristic h(n)
+- 🎯 **Use case**: **BEST for TIME priority** - optimal AND efficient
+- 🏆 **Recommended**: Best overall choice
 - ⏱️ **Efficiency**: Excellent (tied for most efficient)
-- 🏆 **Recommended**: Best overall - optimal AND efficient
 
 ### **Bidirectional Search**
 - ❌ **Failed**: Implementation limitation with multi-goal scenarios
@@ -109,42 +152,59 @@ Fort Station (Goal) ✅
 - 💡 **Limitation**: Not suitable for this multi-goal problem
 
 ### **Hill Climbing**
-- ✅ **Found optimal path**: 11 min
-- 🔍 **Nodes expanded**: 4 ⚡
-- 📝 **Notes**: Greedy local search worked perfectly here
+- ✅ **Found path to Maradana**: 13 min, +14 margin ⚡
+- 🔍 **Nodes expanded**: 3 | Generated: 8 | Max Frontier: 1 | Depth: 2
+- 📝 **Notes**: Greedy local search, lowest memory usage (frontier=1)
+- 🎯 **Use case**: **Fast for TIME priority** - but can get stuck (worked here)
 - ⏱️ **Efficiency**: Excellent (tied for most efficient)
-- ⚠️ **Warning**: Can get stuck in local optima (didn't happen here)
+- ⚠️ **Warning**: No optimality guarantee
 
 ---
 
 ## 🎯 Recommendations
 
-### **Best Choice**: A* Search ⭐
-- **Guaranteed optimal** solution
-- **Highly efficient** (only 4 nodes expanded)
-- **Reliable** across different scenarios
-- **Industry standard** for pathfinding
+### **🪑 If SEAT is REQUIRED (Fort Station)**:
 
-### **Runner-Up**: UCS (Uniform Cost Search)
-- Guaranteed optimal
-- Good efficiency (7 nodes)
-- No heuristic required
-- Reliable and straightforward
+#### **Best Choice**: BFS or IDDFS
+- ✅ **Both find**: 20 min path with +5 min buffer (safe)
+- ✅ **BFS**: Simpler, 7 nodes expanded
+- ✅ **IDDFS**: Memory efficient (frontier=3), 17 nodes expanded
+- 🏆 **Recommendation**: Use **BFS** for simplicity and safety
 
-### **Fastest Execution**: Greedy Best-First or Hill Climbing
-- Only 4 nodes expanded
-- Very fast
-- ⚠️ **Caveat**: Not always optimal (worked well here due to good heuristic)
+#### **Avoid**: DFS
+- ⚠️ **DFS**: 24 min, +1 min margin (too tight, risky!)
+- Only use if absolutely necessary
 
-### **For Learning**: BFS and IDDFS
-- Both guarantee optimality
-- BFS: Simple, intuitive
-- IDDFS: Memory efficient variant
-- Good for understanding fundamentals
+---
 
-### **Avoid**: DLS and Bidirectional
-- **DLS**: Requires knowing solution depth beforehand
-- **Bidirectional**: Limited to single-goal problems
+### **⏱️ If ON-TIME CERTAINTY is PRIORITY (Maradana Station, standing OK)**:
+
+#### **Best Choice**: A* Search ⭐
+- ✅ **Guaranteed optimal**: 13 min, +14 margin
+- ✅ **Highly efficient**: Only 3 nodes expanded
+- ✅ **Reliable** across different scenarios
+- 🏆 **BEST OVERALL CHOICE**
+
+#### **Runner-Up**: UCS (Uniform Cost Search)
+- ✅ Guaranteed optimal: 13 min, +14 margin
+- ✅ Good efficiency: 7 nodes expanded
+- ✅ No heuristic required
+- ✅ Reliable and straightforward
+
+#### **Fastest Execution**: Greedy Best-First or Hill Climbing
+- ✅ Only 3 nodes expanded
+- ✅ Very fast: 13 min, +14 margin
+- ⚠️ **Caveat**: Not always optimal (worked well here due to good heuristic and convergence to same path)
+- **Acceptable here** because all converge to the same best path
+
+#### **Backup**: DLS
+- ✅ 17 min, +10 margin (still good)
+- Reasonable option if depth limit is set appropriately
+
+---
+
+### **❌ Avoid**: Bidirectional
+- **Bidirectional**: Limited to single-goal problems, doesn't work for this scenario
 
 ---
 

@@ -1160,9 +1160,9 @@ const SearchAlgorithmTool = () => {
 
         <div className="bg-white rounded-lg shadow-lg p-4 mb-6 border-l-4 border-blue-600">
           <p className="text-gray-800">
-            <strong>Scenario:</strong> Nimal finished a client meeting in <strong>Dehiwala</strong> and must catch the 
-            <strong> 6:10 PM train to Maho</strong> from either <strong>Fort Station</strong> or <strong>Maradana Station</strong>. 
-            Which route should he take? Will he make it in time? 🚂
+            <strong>Scenario:</strong> Nimal finished a client meeting in <strong>Dehiwala</strong> and must catch the
+            <strong> 6:10 PM train to Maho</strong> from either <strong>Fort Station</strong> or <strong>Maradana Station</strong>.
+            Which route should he take? Will he make it in time? If he <strong>want to catch a seat</strong> he will have to go to fort and else he can catch the train from Maradana 🚂
           </p>
         </div>
 
@@ -1860,15 +1860,10 @@ const SearchAlgorithmTool = () => {
                       <th className="px-3 py-2 text-left font-semibold">Generated (Found)</th>
                       <th className="px-3 py-2 text-left font-semibold">Max Frontier (Memory)</th>
                       <th className="px-3 py-2 text-left font-semibold">Depth</th>
-                      <th className="px-3 py-2 text-left font-semibold">Optimal?</th>
                     </tr>
                   </thead>
                   <tbody>
                     {results.results.map((result, idx) => {
-                      const successfulResults = results.results.filter(r => r.success && r.deadlineStatus?.status === 'success');
-                      const minCost = successfulResults.length > 0 ? Math.min(...successfulResults.map(r => r.cost)) : Infinity;
-
-                      const isOptimal = result.success && result.deadlineStatus?.status === 'success' && result.cost === minCost;
                       const goalNode = nodes.find(n => n.id === result.path[result.path.length - 1]);
                       const deadline = goalNode?.deadline || 0;
                       
@@ -1899,11 +1894,6 @@ const SearchAlgorithmTool = () => {
                           <td className="px-3 py-3 text-cyan-700">{result.generatedNodes ?? '-'}</td>
                           <td className="px-3 py-3 text-orange-700">{result.maxFrontierSize ?? '-'}</td>
                           <td className="px-3 py-3 text-teal-700">{result.searchDepth ?? '-'}</td>
-                          <td className="px-3 py-3">
-                            <span className={`px-2 py-1 rounded text-xs font-medium ${isOptimal ? 'bg-blue-100 text-blue-800' : 'bg-gray-100 text-gray-600'}`}>
-                              {isOptimal ? '⭐ Yes' : 'No'}
-                            </span>
-                          </td>
                         </tr>
                       );
                     })}
